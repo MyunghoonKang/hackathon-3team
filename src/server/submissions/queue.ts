@@ -130,30 +130,6 @@ export class SubmissionQueue {
     return reset.length;
   }
 
-  // run-now 전용: 특정 id 의 QUEUED row 를 직접 RUNNING 으로 전이.
-  // claimNext 와 달리 scheduledAt 무관하게 해당 id 만 대상.
-  claimById(id: string, now = new Date()): boolean {
-    const row = this.db
-      .select({ attempts: schema.submissions.attempts })
-      .from(schema.submissions)
-      .where(and(eq(schema.submissions.id, id), eq(schema.submissions.status, 'QUEUED')))
-      .get();
-    if (!row) return false;
-    const updated = this.db
-      .update(schema.submissions)
-      .set({
-        status: 'RUNNING',
-        attempts: row.attempts + 1,
-        workerStep: null,
-        errorLog: null,
-        updatedAt: now,
-      })
-      .where(and(eq(schema.submissions.id, id), eq(schema.submissions.status, 'QUEUED')))
-      .returning({ id: schema.submissions.id })
-      .all();
-    return updated.length > 0;
-  }
-
   loadForRun(id: string) {
     return this.db
       .select()

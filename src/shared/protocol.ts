@@ -212,6 +212,18 @@ export const GameMetaSchema = z.object({
 // 단일 broadcast 채널. 다른 이벤트명 추가 금지 (공동 계약 고정).
 export const SOCKET_EVENT_ROOM_STATE = 'room:state';
 
+// ---------------------------------------------------------------------------
+// Socket 이벤트 스키마 (클라 → 서버)
+// ---------------------------------------------------------------------------
+export const SocketCreateSession = z.object({ name: z.string().min(1).max(20) });
+export const SocketJoin = z.object({
+  roomCode: z.string().min(4).max(4),
+  name: z.string().min(1).max(20),
+});
+export const SocketSelectGame = z.object({ gameId: z.string() });
+export const SocketStartGame = z.object({});
+export const SocketSubmitResult = z.object({ value: z.number().finite() });
+
 // 이전 run 버그 방지: 3B ResultView · CredentialForm 이 RoomStatePayload 를
 // 받을 때 prop 네이밍은 `snap` (전체) · `me` (내 playerId) 고정.
 // `state` / `myPlayerId` 쓰지 말 것.
