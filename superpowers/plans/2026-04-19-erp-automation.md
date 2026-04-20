@@ -334,7 +334,7 @@ git commit -m "feat(vault): add AES-256-GCM credential vault"
 
 > **변경 사항 (UX 통합):** CredentialPage 라우트는 더 이상 존재하지 않는다. Plan A Task 13에서 만든 `CredentialForm` 컴포넌트가 `ResultView` 내부에 인라인으로 노출되며, 본 Task에서 alert 스텁을 실제 vault 저장 + queue enqueue 호출로 채운다. 호출이 성공하면 서버가 RoomStatus를 `CREDENTIAL_INPUT → QUEUED`로 transition한 뒤 `room:state`를 broadcast하므로, 이 컴포넌트는 별도의 navigation을 수행하지 않는다.
 
-- [ ] **Step 3.1: 공용 스키마 추가 (`src/shared/protocol.ts`)**
+- [x] **Step 3.1: 공용 스키마 추가 (`src/shared/protocol.ts`)**
 
 ```typescript
 export const credentialInputSchema = z.object({
@@ -345,7 +345,7 @@ export const credentialInputSchema = z.object({
 export type CredentialInput = z.infer<typeof credentialInputSchema>;
 ```
 
-- [ ] **Step 3.2: 실패하는 라우트 테스트**
+- [x] **Step 3.2: 실패하는 라우트 테스트**
 
 ```typescript
 // tests/credentials-route.test.ts
@@ -373,7 +373,7 @@ describe('POST /api/credentials', () => {
 
 Run: `npx vitest run tests/credentials-route.test.ts` → FAIL
 
-- [ ] **Step 3.3: `src/server/routes/credentials.ts`**
+- [x] **Step 3.3: `src/server/routes/credentials.ts`**
 
 ```typescript
 import { Router } from 'express';
@@ -393,13 +393,13 @@ export function credentialsRouter(vault: CredentialVault): Router {
 }
 ```
 
-- [ ] **Step 3.4: `src/server/app.ts` 에서 `app.use('/api/credentials', credentialsRouter(vault))` 마운트**
+- [x] **Step 3.4: `src/server/app.ts` 에서 `app.use('/api/credentials', credentialsRouter(vault))` 마운트**
 
-- [ ] **Step 3.5: 테스트 PASS 확인**
+- [x] **Step 3.5: 테스트 PASS 확인**
 
 Run: `npx vitest run tests/credentials-route.test.ts` → PASS
 
-- [ ] **Step 3.6: Plan A Task 13의 `CredentialForm` 본문 와이어링**
+- [x] **Step 3.6: Plan A Task 13의 `CredentialForm` 본문 와이어링**
 
 기존 alert 스텁을 다음 두 호출로 교체. `props.sessionId`·`props.loserId`는 이미 `ResultView`가 `RoomStatePayload`에서 전달.
 
@@ -449,7 +449,7 @@ export function CredentialForm({ sessionId, loserId }: { sessionId: string; lose
 
 > 추가로, 사용자가 `FINISHED` 상태에서 "ERP 자격증명 입력하기" CTA를 누른 시점에 `POST /api/sessions/:id/credential-input` (또는 동일한 의미의 endpoint)을 호출해 `FINISHED → CREDENTIAL_INPUT` 전이를 일으키는 것이 자연스럽다. 이 호출은 Step 11.2의 `submissions.ts` 라우터에 함께 추가하거나 별도 라우트로 분리한다 (구현 시 선택).
 
-- [ ] **Step 3.7: 커밋**
+- [x] **Step 3.7: 커밋**
 
 ```bash
 git add src/server/routes/credentials.ts src/server/app.ts src/shared/protocol.ts \
@@ -1699,7 +1699,7 @@ npx tsx scripts/demo-dryrun.ts    # 같은 스크립트, 하지만 mode=live 로
 - [ ] 호출 직전 `mgr.transitionStatus(sessionId, 'RUNNING', { workerStep: 'login' })` + `broadcastRoomState` 수행. UI 가 RUNNING 진입을 볼 수 있어야 한다.
 
 ### Task 3 (CredentialForm) 추가 DoD
-- [ ] `CredentialForm` prop 시그니처는 `{ sessionId: string, loserId: string }` 로 공동 계약 세션에서 lock. ResultView 에서 이 형태로 호출됨을 전제.
+- [x] `CredentialForm` prop 시그니처는 `{ sessionId: string, loserId: string }` 로 공동 계약 세션에서 lock. ResultView 에서 이 형태로 호출됨을 전제.
 
 ### Task 13 (E2E 드라이런) 추가 DoD
 - [ ] **브라우저 2 탭 수동 E2E 체크리스트** — `tests/e2e-mock.test.ts` 녹색만으로는 부족. HomePage → Lobby → Game → Result → Credential → QUEUED → (run-now) → RUNNING → COMPLETED 전체 완주를 Playwright headed 또는 수동 브라우저로 1회 이상 확인. Props naming·mount race·FK 는 TDD 가 못 잡는 영역.

@@ -1,6 +1,8 @@
 // 공동 계약 (H+0~2) · 3A 리드 · 4A 리뷰어 합의
 // 변경 규칙: 추가만 OK. 삭제·rename 은 양 Dev 동의 + 별도 PR.
 
+import { z } from 'zod';
+
 // ---------------------------------------------------------------------------
 // RoomStatus · 9 enum
 // ---------------------------------------------------------------------------
@@ -110,21 +112,35 @@ export interface RoomStatePayload {
 }
 
 // ---------------------------------------------------------------------------
-// Credential input schema (validation 은 zod 사용 사이트에서 import)
+// Credential input schema (런타임 검증 — zod)
 // ---------------------------------------------------------------------------
 
-export interface CredentialInput {
-  userId: string; // 메이사 사번
-  loginId: string; // 더존 아마란스 로그인 ID
-  password: string; // 평문. 서버에서 Vault(AES-256-GCM) 암호화 후 폐기.
-}
-
-// zod 등 런타임 검증은 각 라우트에서 이 타입을 기준으로 구성.
 export const CREDENTIAL_FIELD_RULES = {
   userId: { minLength: 1, maxLength: 32 },
   loginId: { minLength: 1, maxLength: 64 },
   password: { minLength: 1, maxLength: 128 },
 } as const;
+
+export const credentialInputSchema = z.object({
+  userId: z
+    .string()
+    .min(CREDENTIAL_FIELD_RULES.userId.minLength)
+    .max(CREDENTIAL_FIELD_RULES.userId.maxLength),
+  loginId: z
+    .string()
+    .min(CREDENTIAL_FIELD_RULES.loginId.minLength)
+    .max(CREDENTIAL_FIELD_RULES.loginId.maxLength),
+  password: z
+    .string()
+    .min(CREDENTIAL_FIELD_RULES.password.minLength)
+    .max(CREDENTIAL_FIELD_RULES.password.maxLength),
+});
+
+export type CredentialInput = z.infer<typeof credentialInputSchema>;
+
+export const createCredentialRequestSchema = credentialInputSchema.extend({
+  sessionId: z.string().min(1),
+});
 
 // ---------------------------------------------------------------------------
 // REST 응답 타입

@@ -1,20 +1,16 @@
-import express from 'express';
 import { createServer } from 'node:http';
 import { Server as IOServer } from 'socket.io';
+import { buildApp } from './app';
+import { loadConfig } from './config';
 
-const app = express();
-app.use(express.json());
-
-app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, ts: new Date().toISOString() });
-});
+const config = loadConfig();
+const { app } = buildApp({ vaultKey: config.vaultKey, dbPath: config.dbPath });
 
 const httpServer = createServer(app);
 new IOServer(httpServer, {
   cors: { origin: 'http://localhost:5173' },
 });
 
-const port = Number(process.env.PORT ?? 3000);
-httpServer.listen(port, () => {
-  console.log(`[server] listening on :${port}`);
+httpServer.listen(config.port, () => {
+  console.log(`[server] listening on :${config.port}`);
 });

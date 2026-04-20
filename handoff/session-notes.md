@@ -82,3 +82,14 @@
   - createDb(':memory:') 는 drizzle/*.sql 자동 실행 (테스트 편의). 실제 서버는 기존 migrate.ts 유지.
   - .env.example 은 공동 계약에서 이미 VAULT_MASTER_KEY 포함 → 추가 수정 없음.
   - 다음 단계: B3 `POST /api/credentials` + `…/credential-input` REST + CredentialForm.tsx 본문.
+
+[4A] 2026-04-20 — Task B3 완료 — POST /api/credentials + CredentialForm 본문 (6 tests pass, total 13 B-track tests).
+  - src/shared/protocol.ts: credentialInputSchema (zod) + createCredentialRequestSchema (sessionId 확장) 추가. CredentialInput 은 z.infer 로 재정의 (기존 interface 호환).
+  - src/server/app.ts 신설: buildApp({ vaultKey, inMemory?, dbPath?, db? }) → { app, db, vault }. 기존 index.ts 는 buildApp 호출 + socket.io 기동으로 축약.
+  - src/server/routes/credentials.ts: POST / · createCredentialRequestSchema 검증 · vault.save(sessionId, {userId, loginId, password}) · 204. FK 위반 시 409 session_not_found.
+  - tests/credentials-route.test.ts: supertest 기반 6 케이스 — 204 round-trip, overwrite, 400(빈 body·빈 필드·password>128), 409(FK).
+  - src/web/components/CredentialForm.tsx: props {sessionId, loserId} · 사번/ID/PW 3 필드 · POST /api/credentials → POST /api/sessions/:id/submissions 2-step. 성공 시 navigation 없음(room:state 수신으로 자연스럽게 언마운트).
+  - 플랜의 `sessionId in path` vs `body` 차이 해결: CreateCredentialRequest 인터페이스(이미 protocol.ts 에 lock 됨) 가 body 에 sessionId 포함하도록 명시 → 그대로 구현.
+  - 미완 / 이월: `POST /api/sessions/:id/credential-input` (FINISHED → CREDENTIAL_INPUT 전이 + broadcast) 는 SessionManager(A5) · io 인스턴스 필요 → B11 submissions.ts 라우터에서 함께 구현 예정 (플랜 Step 3 §450 선택지 준수).
+  - supertest / @types/supertest devDep 추가 (package.json).
+  - 다음 단계: B4 SubmissionQueue 상태머신.
