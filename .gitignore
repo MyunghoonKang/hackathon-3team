@@ -4,6 +4,13 @@
 .env
 .env.local
 data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Claude Code 로컬 설정
+.claude/
 
 # Node · 빌드 아티팩트
 node_modules/

@@ -62,3 +62,15 @@
   - .env.example: PORT/DB_PATH/GAMES_DIR/VAULT_MASTER_KEY/WORKER_MODE/ERP_BASE_URL/ERP_COMPANY_CODE/ERP_CONFIRM_SUBMIT(주석).
   - 이전 run 버그 흡수: ViewProps prop 네이밍 잠금(snap/me) · submissions FK 보장 규칙 주석 · SessionManager persist=true 기본값 규칙 문서화.
   - 다음 단계: 3A A1 스캐폴딩(Vite·tsconfig·package.json) 후 `feat(shared): lock contracts for A/B split` 로 일괄 커밋 · main 머지.
+
+[4A] 2026-04-20 — Task A1 스캐폴딩 선점 완료 (Dev 3 세션 부재로 4A 가 대신 처리).
+  - package.json (type:module, dev:server·dev:web·dev·build:web·db:migrate·typecheck·test scripts) + npm i 완료.
+  - tsconfig.json (server+shared+tests) / tsconfig.web.json (web+shared) 분리. strict + noUncheckedIndexedAccess.
+  - vite.config.ts: 5173 → 3000 proxy (/api · /socket.io ws · /games).
+  - drizzle.config.ts: schema=src/server/db/schema.ts · dialect=sqlite · out=drizzle.
+  - src/server/index.ts: express+socket.io Hello World · /api/health.
+  - src/server/db/migrate.ts: drizzle-kit 대신 간이 마이그레이터 (__migrations 테이블 체크인).
+  - src/web/main.tsx + App.tsx + index.html (styles.css import).
+  - .gitignore: data/ · *.db · .claude/ · dist/ · node_modules/.
+  - 검증: db:migrate 0001_init.sql 적용 OK · /api/health 200 · vite build 232KB OK · typecheck 깨끗.
+  - 다음 단계: B1 DB 마이그레이션 이미 포함됨 → B2 CredentialVault (AES-256-GCM round-trip) 로 직행.
