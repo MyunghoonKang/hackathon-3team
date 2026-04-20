@@ -168,3 +168,11 @@
   - 의존성: socket.io-client 추가 (npm i). package.json/package-lock.json 변경.
   - 검증: `tsc -p tsconfig.web.json --noEmit` 0 error. server 쪽 `matcher.ts(51,10)` 에러는 4B 소유 · 본 태스크 무관. 수동 2탭 검증은 A9 머지 후 재실행 예정.
   - 다음 단계: 3B A11 LobbyView · A12 GameView. A9 머지 알림 수신 시 재연결 시나리오 확인.
+
+[4A] 2026-04-20 — Task B12 완료 — submissionHook 실 구현 (FINISHED→CREDENTIAL_INPUT 전이 + broadcast, 6 tests pass).
+  - src/server/hooks/submissionHook.ts: 공동 계약 시그니처 `onGameFinished(sessionId, loserId): Promise<void>` 유지하면서 의존성 주입형 팩토리 `createSubmissionHook({ mgr, io })` 추가. 모듈 레벨 `onGameFinished` 는 `registerSubmissionHook(deps)` 로 1회 바인딩 후 실 전이 수행. `resetSubmissionHookForTests` 는 테스트 격리용.
+  - src/server/app.ts: buildApp 끝에서 `createSubmissionHook({ mgr, io })` + `registerSubmissionHook` 호출. BuiltApp 에 `submissionHook` 필드 노출 → 3A 의 GameRunner 가 `import { onGameFinished } from './hooks/submissionHook'` 로 호출하면 자동 작동.
+  - 동작: `mgr.transitionStatus(FINISHED→CREDENTIAL_INPUT, patch:{loserId})` → `broadcastRoomState(io, snap)`. illegal transition / SessionNotFoundError 는 호출자에게 전파.
+  - tests/submission-hook.test.ts 6 케이스: 정상 전이+broadcast · io=null no-op · PREPARING 호출 → IllegalTransitionError · 미존재 sessionId → SessionNotFoundError · register 전 모듈 호출 = warn-only · register 후 모듈 호출 = 실 전이.
+  - 검증: 신규 6/6 + submission-hook 외 4A 영역 회귀 없음. 전체 290/293 (실패 3은 4B worker-formfill budget lookup Playwright 타임아웃 — 본 태스크 무관, 기존 상태). typecheck: 4B `worker/matcher.ts:51` 1 에러는 본 태스크 직전 main 에서 동일 (4B 영역).
+  - 다음 단계: B13 E2E mock 녹색 — 4B B10(결재상신) 머지 후 진입. RoomPage 5 case PR 도 3B RoomPage 골격(A10 머지됨) 위에 얹을 수 있는 시점.

@@ -8,6 +8,11 @@ import { credentialsRouter } from './routes/credentials';
 import { submissionsRouter } from './routes/submissions';
 import { SubmissionQueue } from './submissions/queue';
 import { SessionManager } from './session/manager';
+import {
+  createSubmissionHook,
+  registerSubmissionHook,
+  type SubmissionHook,
+} from './hooks/submissionHook';
 import type { WorkerMode } from './config';
 
 export interface BuildAppOptions {
@@ -27,6 +32,7 @@ export interface BuiltApp {
   vault: CredentialVault;
   queue: SubmissionQueue;
   mgr: SessionManager;
+  submissionHook: SubmissionHook;
 }
 
 export function buildApp(opts: BuildAppOptions): BuiltApp {
@@ -58,5 +64,11 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     }),
   );
 
-  return { app, db, vault, queue, mgr };
+  // B12: 모듈 레벨 onGameFinished 가 mgr/io 를 잡도록 1회 바인딩.
+  // 3A GameRunner 가 import 한 onGameFinished 는 이 시점부터 실 전이 수행.
+  const hookDeps = { mgr, io: opts.io ?? null };
+  const submissionHook = createSubmissionHook(hookDeps);
+  registerSubmissionHook(hookDeps);
+
+  return { app, db, vault, queue, mgr, submissionHook };
 }
