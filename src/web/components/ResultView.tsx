@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ViewProps } from '../../shared/protocol';
 import { StatusBadge } from './StatusBadge';
 import { InlineSpinner } from './InlineSpinner';
@@ -56,6 +57,7 @@ function Header({ snap }: Pick<ViewProps, 'snap'>) {
 
 export function ResultView({ snap, me }: ViewProps) {
   const iAmLoser = snap.loserId === me;
+  const [runBusy, setRunBusy] = useState(false);
 
   if (snap.status === 'FINISHED') {
     const loser = snap.players.find(p => p.id === snap.loserId);
@@ -85,7 +87,7 @@ export function ResultView({ snap, me }: ViewProps) {
         {iAmLoser && snap.loserId && (
           <CredentialForm sessionId={snap.sessionId} loserId={snap.loserId} />
         )}
-        {!iAmLoser && (
+        {!iAmLoser && snap.loserId && (
           <p style={{ margin: 0, color: 'var(--color-text-muted)', textAlign: 'center' }}>
             패자가 자격증명을 입력할 때까지 기다려주세요…
           </p>
@@ -122,12 +124,21 @@ export function ResultView({ snap, me }: ViewProps) {
         </p>
         {iAmLoser && snap.submissionId && (
           <button
-            onClick={() =>
-              fetch(`/api/submissions/${snap.submissionId}/run-now`, {
-                method: 'POST',
-                headers: { 'X-Demo-Confirm': 'yes' },
-              })
-            }
+            onClick={async () => {
+              setRunBusy(true);
+              try {
+                const res = await fetch(`/api/submissions/${snap.submissionId}/run-now`, {
+                  method: 'POST',
+                  headers: { 'X-Demo-Confirm': 'yes' },
+                });
+                if (!res.ok) alert(`실행 실패 (${res.status})`);
+              } catch {
+                alert('네트워크 오류');
+              } finally {
+                setRunBusy(false);
+              }
+            }}
+            disabled={runBusy}
             style={{
               padding: 'var(--space-2) var(--space-4)',
               borderRadius: 'var(--radius-md)',
