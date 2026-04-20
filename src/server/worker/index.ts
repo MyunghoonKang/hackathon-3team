@@ -22,7 +22,7 @@ export async function runSubmission(submissionId: string): Promise<WorkerResult>
   // 4A 가 B4 머지 시점에 결정). 그 orchestration 이 붙기 전까지는 스텁 FAILED 유지.
   return {
     status: 'FAILED',
-    errorLog: `worker stub (mode=${mode}) — B8~B10 (cardModal · formFill · approval) · runSubmission orchestration 미구현. login() 은 별도 export.`,
+    errorLog: `worker stub (mode=${mode}) — B8 (cardModal · 별도 PR) · B10 (approval) · runSubmission orchestration 미구현. login() · fillForm() 은 별도 export.`,
   };
 }
 
@@ -36,3 +36,5 @@ export { launchBrowser } from './browser';
 export type { BrowserSession } from './browser';
 export { login, loginUrlFor, LoginError, mockLoginUrl } from './login';
 export type { LoginOptions } from './login';
+export { fillForm, defaultTitle, FormFillError } from './formFill';
+export type { FillInput, PurposeKind } from './formFill';

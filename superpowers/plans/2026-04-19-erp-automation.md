@@ -1239,7 +1239,7 @@ git commit -m "feat(worker): card row matching + gridView-based modal automation
 - Create: `src/server/worker/formFill.ts`
 - Test: `tests/worker-formfill.test.ts` (목업)
 
-- [ ] **Step 9.1: `src/server/worker/formFill.ts`**
+- [x] **Step 9.1: `src/server/worker/formFill.ts`**
 
 ```typescript
 import type { Page } from 'playwright';
@@ -1309,7 +1309,7 @@ export function defaultTitle(purposeKind: 'coffee' | 'lunch', when: Date): strin
 }
 ```
 
-- [ ] **Step 9.2: 목업 기반 통합 테스트 작성**
+- [x] **Step 9.2: 목업 기반 통합 테스트 작성**
 
 `tests/worker-formfill.test.ts` — erp-writeform.html 을 로드해 `fillForm({ title: 'TEST', purposeKind: 'coffee', projectCode: '3009', budgetCode: '4001' })` 실행 후 `gridView.getJsonRows()[0]` 의 `cashCd`·`rmkDc`·`budgetAcctCd`·`validateResult` 를 검증.
 
@@ -1341,7 +1341,7 @@ describe('fillForm (mock)', () => {
 });
 ```
 
-- [ ] **Step 9.3: `worker/index.ts` 통합**
+- [x] **Step 9.3: `worker/index.ts` 통합** — B7 패턴 따라 `fillForm` · `defaultTitle` · `FormFillError` re-export 만 추가. orchestration (sub.titleOverride · sub.purposeKind 등 deps 주입) 은 dev4.md 계약상 4A 가 Scheduler/run-now 에서 직접 import 해 조립.
 
 ```typescript
 import { fillForm, defaultTitle } from './formFill';
@@ -1350,7 +1350,7 @@ await fillForm(page, { title, purposeKind: sub.purposeKind, projectCode: '3009',
 await snap(page, dir, 'form-filled');
 ```
 
-- [ ] **Step 9.4: 커밋**
+- [x] **Step 9.4: 커밋**
 
 ```bash
 git add src/server/worker/formFill.ts tests/worker-formfill.test.ts src/server/worker/index.ts
