@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>결재상신 (mock)</title>
+  <style>
+    body { font-family: Pretendard, sans-serif; background: #f5f5f5; padding: 24px; margin: 0; }
+    .frame { max-width: 800px; margin: 0 auto; background: #fff; padding: 24px; border-radius: 8px; }
+    h1 { margin-top: 0; font-size: 16px; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
+    button { padding: 8px 16px; background: #111; color: #fff; border: 0; cursor: pointer; border-radius: 4px; }
+    button.secondary { background: #666; }
+    label { display: block; font-size: 13px; color: #555; margin-top: 12px; }
+    .editor-wrap { border: 1px solid #ddd; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+    iframe { display: block; width: 100%; height: 200px; border: 0; }
+    .meta { font-size: 12px; color: #888; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <!--
+    ERP Exploration §결재상신 팝업 참조.
+    실 ERP 팝업 URL 패턴: #/popup?callComp=UBAP001&formId=22&...
+    실 DOM selector:
+      [상신] 버튼: button:has-text("상신")
+      dzEditor:   iframe#editorView_UBAP001 > body (contenteditable)
+  -->
+  <div class="frame">
+    <h1>지출품의서 결재상신</h1>
+    <div class="toolbar">
+      <button type="button" class="secondary">미리보기</button>
+      <button type="button" class="secondary">보관</button>
+      <button id="btnSubmit" type="button">상신</button>
+    </div>
+
+    <label>결재 내용</label>
+    <div class="editor-wrap">
+      <!--
+        srcdoc 으로 같은 origin 처럼 동작 → Playwright frameLocator('#editorView_UBAP001')
+        + locator('body') + evaluate() 로 텍스트 주입 가능.
+      -->
+      <iframe
+        id="editorView_UBAP001"
+        srcdoc="<html><head><style>body{font-family:sans-serif;padding:8px;margin:0;min-height:160px;}p{margin:4px 0;}</style></head><body contenteditable='true'><p>결재 안내 문구 (일반경비 기준)</p></body></html>"
+      ></iframe>
+    </div>
+
+    <p class="meta">합계금액: <span id="totalAmt">-</span> · 프로젝트: Dev팀</p>
+  </div>
+
+  <script>
+    document.getElementById('btnSubmit').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('mock:submitted', { detail: { at: Date.now() } }));
+      document.title = '[완료] 결재상신';
+    });
+  </script>
+</body>
+</html>
