@@ -4,6 +4,8 @@ import { buildApp } from './app';
 import { loadConfig } from './config';
 import { Scheduler } from './submissions/scheduler';
 import { GameRegistry } from './games/registry';
+import { attachIo } from './io';
+import { sessionsRouter } from './routes/sessions';
 
 const config = loadConfig();
 
@@ -39,7 +41,7 @@ const registry = new GameRegistry({ dir: config.gamesDir, watch: true });
 await registry.scan();
 registry.startWatching();
 
-const { app, queue } = buildApp({
+const { app, queue, mgr, registry: builtRegistry } = buildApp({
   vaultKey: config.vaultKey,
   dbPath: config.dbPath,
   io,
@@ -48,6 +50,12 @@ const { app, queue } = buildApp({
   registry,
   gamesDir: config.gamesDir,
 });
+
+app.use('/api/sessions', sessionsRouter(mgr));
+
+if (builtRegistry) {
+  attachIo(io, { mgr, registry: builtRegistry });
+}
 
 httpServer.on('request', app);
 
