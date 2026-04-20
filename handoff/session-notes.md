@@ -62,3 +62,5 @@
   - .env.example: PORT/DB_PATH/GAMES_DIR/VAULT_MASTER_KEY/WORKER_MODE/ERP_BASE_URL/ERP_COMPANY_CODE/ERP_CONFIRM_SUBMIT(주석).
   - 이전 run 버그 흡수: ViewProps prop 네이밍 잠금(snap/me) · submissions FK 보장 규칙 주석 · SessionManager persist=true 기본값 규칙 문서화.
   - 다음 단계: 3A A1 스캐폴딩(Vite·tsconfig·package.json) 후 `feat(shared): lock contracts for A/B split` 로 일괄 커밋 · main 머지.
+
+[4B] Task B6 완료 — `src/server/worker/{index,mode,browser,screenshots}.ts` + `mock/{login,card,form}.html` + `mock/seed.ts` + `tests/worker-mock.test.ts` + `tests/fixtures/cardRows.json`. `runSubmission(submissionId): Promise<WorkerResult>` 시그니처 고정(dev4.md 계약 기준 · plan 의 deps 주입형 `(id, deps): Promise<void>` 스텁이 아님에 주의) · 현재는 FAILED+errorLog 반환 스텁이라 4A Scheduler(B5)/run-now(B11) 가 지금부터 import + 호출 가능. browser.ts 는 playwright 를 dynamic import 해 package.json 확정 전에도 파일 파싱 가능. `npm i playwright` / `npx playwright install chromium` 은 3A A1 완료 후 실행 필요 (worker-mock.test.ts 도 그 전까지는 미실행). 브랜치 `worktree-session-4b`.
