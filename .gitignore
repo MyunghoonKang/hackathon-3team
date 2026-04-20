@@ -1,0 +1,18 @@
+.DS_Store
+
+# 환경변수 · 로컬 DB
+.env
+.env.local
+data/
+
+# Node · 빌드 아티팩트
+node_modules/
+dist/
+build/
+coverage/
+
+# Playwright · 로그
+.playwright-mcp/
+playwright-report/
+test-results/
+*.log

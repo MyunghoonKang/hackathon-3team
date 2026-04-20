@@ -1,0 +1,101 @@
+/* 공동 계약 (H+0~2) · 3B 소유 · 확장만 OK · 삭제·rename 금지 */
+
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+@import url('https://rsms.me/inter/inter.css');
+
+:root {
+  /* color palette · 다크 베이스 + 라임 액센트 (3B 재량 변경 가능) */
+  --color-bg:            #0d0f14;
+  --color-surface:       #161922;
+  --color-surface-alt:   #1f2430;
+  --color-border:        #2a3040;
+  --color-text:          #e6e9ef;
+  --color-text-muted:    #8b92a5;
+  --color-primary:       #c6f53d;   /* 라임 액센트 */
+  --color-primary-ink:   #0d0f14;   /* primary 위 텍스트 */
+  --color-accent:        #ff4d8d;   /* 결과 발표 / 패자 강조 */
+
+  /* RoomStatus semantic colors (StatusBadge 가 사용) */
+  --color-status-preparing:        #8b92a5;
+  --color-status-playing:          #c6f53d;
+  --color-status-finished:         #ffd24d;
+  --color-status-credential-input: #7dd3fc;
+  --color-status-queued:           #a78bfa;
+  --color-status-running:          #60a5fa;
+  --color-status-completed:        #4ade80;
+  --color-status-failed:           #f87171;
+  --color-status-aborted:          #525866;
+
+  /* spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* shadow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45);
+
+  /* typography */
+  --font-sans: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Inter', ui-monospace, SFMono-Regular, monospace;
+
+  /* motion */
+  --duration-fast: 120ms;
+  --duration-base: 240ms;
+  --duration-slow: 480ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
