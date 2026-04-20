@@ -176,7 +176,7 @@ Task B1 부터 시작.
 
 ### DoD (H+22 기준, 스펙 §4.4 verbatim)
 
-- [ ] B6 워커 스캐폴딩 + 목업 HTML 3종 + `WORKER_MODE` 토글
+- [x] B6 워커 스캐폴딩 + 목업 HTML 3종 + `WORKER_MODE` 토글
 - [ ] B7 로그인 · B8 카드매칭 · B9 폼채움 · B10 결재상신 (각 단계 시작 시 `transitionStatus(RUNNING, { workerStep })` 호출 → 4A broadcast)
 - [ ] `runSubmission(submissionId: string): Promise<WorkerResult>` export (4A 가 import)
 - [ ] 단위 테스트 (`matcher.test.ts` · `worker-mock.test.ts`) 녹색

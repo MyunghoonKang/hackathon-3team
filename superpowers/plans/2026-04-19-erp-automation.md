@@ -785,7 +785,7 @@ git commit -m "feat(scheduler): next-business-day 09:00 KST cron dispatcher"
 - Create: `src/server/worker/mock/erp-login.html`, `erp-writeform.html`, `erp-approval.html`, `seed.ts`
 - Test: `tests/worker-mock.test.ts` (기본 라우팅만)
 
-- [ ] **Step 6.1: `src/server/worker/mode.ts`**
+- [x] **Step 6.1: `src/server/worker/mode.ts`**
 
 ```typescript
 import type { WorkerMode } from '../submissions/types';
@@ -797,7 +797,7 @@ export function resolveMode(env: NodeJS.ProcessEnv): WorkerMode {
 }
 ```
 
-- [ ] **Step 6.2: 목업 HTML 3개 — ERP Exploration selector 그대로 흉내**
+- [x] **Step 6.2: 목업 HTML 3개 — ERP Exploration selector 그대로 흉내**
 
 `src/server/worker/mock/erp-login.html`:
 ```html
@@ -827,7 +827,7 @@ export function resolveMode(env: NodeJS.ProcessEnv): WorkerMode {
 
 `src/server/worker/mock/erp-approval.html` — `<iframe id="editorView_UBAP001" src="about:blank">` + [상신] 버튼 + 합의 슬롯 placeholder.
 
-- [ ] **Step 6.3: `src/server/worker/mock/seed.ts` — 목업용 카드 데이터**
+- [x] **Step 6.3: `src/server/worker/mock/seed.ts` — 목업용 카드 데이터**
 
 ```typescript
 export const MOCK_CARD_ROWS = [
@@ -845,7 +845,7 @@ export const MOCK_CARD_ROWS = [
 ];
 ```
 
-- [ ] **Step 6.4: `src/server/worker/browser.ts` — Playwright 런처**
+- [x] **Step 6.4: `src/server/worker/browser.ts` — Playwright 런처**
 
 ```typescript
 import { chromium, type Browser, type BrowserContext } from 'playwright';
@@ -863,7 +863,7 @@ export async function launchBrowser(opts: { headless: boolean }): Promise<Browse
 }
 ```
 
-- [ ] **Step 6.5: `src/server/worker/screenshots.ts`**
+- [x] **Step 6.5: `src/server/worker/screenshots.ts`**
 
 ```typescript
 import { mkdirSync } from 'node:fs';
@@ -883,7 +883,7 @@ export async function snap(page: Page, dir: string, name: string): Promise<strin
 }
 ```
 
-- [ ] **Step 6.6: `src/server/worker/index.ts` — 전체 파이프라인 엔트리 (stub)**
+- [x] **Step 6.6: `src/server/worker/index.ts` — 전체 파이프라인 엔트리 (stub)**
 
 ```typescript
 import { resolveMode } from './mode';
@@ -915,7 +915,7 @@ export async function runSubmission(id: string, deps: RunDeps): Promise<void> {
 }
 ```
 
-- [ ] **Step 6.7: Playwright 설치 + 스모크 테스트**
+- [x] **Step 6.7: Playwright 설치 + 스모크 테스트** (테스트 파일만 선커밋 · `npm i playwright` 는 3A A1 package.json 확정 후)
 
 ```bash
 npm i playwright
@@ -937,7 +937,7 @@ describe('WORKER_MODE resolver', () => {
 });
 ```
 
-- [ ] **Step 6.8: 커밋**
+- [x] **Step 6.8: 커밋**
 
 ```bash
 git add src/server/worker package.json tests/worker-mock.test.ts

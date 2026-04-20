@@ -82,3 +82,5 @@
   - createDb(':memory:') 는 drizzle/*.sql 자동 실행 (테스트 편의). 실제 서버는 기존 migrate.ts 유지.
   - .env.example 은 공동 계약에서 이미 VAULT_MASTER_KEY 포함 → 추가 수정 없음.
   - 다음 단계: B3 `POST /api/credentials` + `…/credential-input` REST + CredentialForm.tsx 본문.
+
+[4B] Task B6 완료 — `src/server/worker/{index,mode,browser,screenshots}.ts` + `mock/{login,card,form}.html` + `mock/seed.ts` + `tests/worker-mock.test.ts` + `tests/fixtures/cardRows.json`. `runSubmission(submissionId): Promise<WorkerResult>` 시그니처 고정(dev4.md 계약 기준 · plan 의 deps 주입형 `(id, deps): Promise<void>` 스텁이 아님에 주의) · 현재는 FAILED+errorLog 반환 스텁이라 4A Scheduler(B5)/run-now(B11) 가 지금부터 import + 호출 가능. browser.ts 는 playwright 를 dynamic import 해 package.json 확정 전에도 파일 파싱 가능. `npm i playwright` / `npx playwright install chromium` 은 3A A1 완료 후 실행 필요 (worker-mock.test.ts 도 그 전까지는 미실행). 브랜치 `worktree-session-4b`.
