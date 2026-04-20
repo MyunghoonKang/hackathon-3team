@@ -1,13 +1,19 @@
 import { Routes, Route } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import RoomPage from './pages/RoomPage';
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      {/* 단일 방 라우트. RoomPage 가 RoomStatus 에 따라 Lobby/Game/Result 를 스왑 (A11~A13). */}
-      <Route path="/room/:code" element={<RoomPage />} />
+      <Route
+        path="/"
+        element={
+          <main style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '2.25rem', margin: 0 }}>식후 벌칙게임</h1>
+            <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-4)' }}>
+              Task A10 HomePage 에서 채워집니다.
+            </p>
+          </main>
+        }
+      />
       <Route
         path="*"
         element={

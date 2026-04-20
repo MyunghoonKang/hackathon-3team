@@ -53,7 +53,7 @@ describe('fillForm (mock)', () => {
       fillForm(page, { title: 'no budget', purposeKind: 'coffee' }),
     ).rejects.toBeInstanceOf(FormFillError);
     await page.close();
-  }, 10_000);
+  });
 });
 
 describe('defaultTitle', () => {

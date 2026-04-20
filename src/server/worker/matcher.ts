@@ -48,7 +48,7 @@ export function matchCardRow(rows: CardRow[], c: MatchCriteria): CardRow | null 
   if (withDelta.length === 0) return null;
 
   withDelta.sort((a, b) => a.delta - b.delta);
-  return withDelta[0]!.r;
+  return withDelta[0].r;
 }
 
 // 'YYYY-MM-DD HH:MM:SS' (KST) → UTC ms.

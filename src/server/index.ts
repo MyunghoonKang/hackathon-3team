@@ -3,6 +3,7 @@ import { Server as IOServer } from 'socket.io';
 import { buildApp } from './app';
 import { loadConfig } from './config';
 import { Scheduler } from './submissions/scheduler';
+import { GameRegistry } from './games/registry';
 
 const config = loadConfig();
 
@@ -33,12 +34,19 @@ const io = new IOServer(httpServer, {
   cors: { origin: 'http://localhost:5173' },
 });
 
+// GameRegistry 생성 + 초기 스캔
+const registry = new GameRegistry({ dir: config.gamesDir, watch: true });
+await registry.scan();
+registry.startWatching();
+
 const { app, queue } = buildApp({
   vaultKey: config.vaultKey,
   dbPath: config.dbPath,
   io,
   workerMode: config.workerMode,
   runSubmission,
+  registry,
+  gamesDir: config.gamesDir,
 });
 
 httpServer.on('request', app);
