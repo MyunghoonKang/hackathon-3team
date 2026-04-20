@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>카드사용내역 (mock)</title>
+  <style>
+    body { font-family: Pretendard, sans-serif; background: #f5f5f5; padding: 16px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; text-align: left; }
+    th { background: #fafafa; }
+    tr { cursor: pointer; }
+    tr:hover { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <!--
+    ERP Exploration §카드내역 모달 참조.
+    실 ERP 는 cardHistoryGrid (AUI Grid) 에 행 렌더. 각 행 클릭 시 품의서 폼이 자동 채움.
+    목업은 같은 행 구조를 <table><tbody id="cardRows"> 로 표현 + seed.ts 에서 주입.
+
+    매칭 규칙 (Plan B §Task 8):
+      1. 사용자(loginId) 의 카드번호 suffix 4 자리 일치
+      2. 승인시각 최근순 + 금액 유사도
+      3. supAm + vatAm === sunginAm 불일치 행은 제외
+  -->
+  <h3>카드사용내역</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>카드</th>
+        <th>일시</th>
+        <th>가맹점</th>
+        <th>공급가</th>
+        <th>부가세</th>
+        <th>합계</th>
+        <th>승인번호</th>
+      </tr>
+    </thead>
+    <tbody id="cardRows">
+      <!-- seed.ts 가 page.evaluate 로 주입 · 또는 query ?rows= 로 전달 -->
+    </tbody>
+  </table>
+
+  <script>
+    // MOCK_CARD_ROWS 를 query string 으로 받아 렌더 (Playwright 가 URL 로 주입).
+    function renderRows(rows) {
+      const tbody = document.getElementById('cardRows');
+      tbody.innerHTML = '';
+      for (const row of rows) {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-sungin-nb', row.sunginNb);
+        tr.setAttribute('data-card-cd', row.cardCd);
+        tr.innerHTML = `
+          <td>${row.cardNm}</td>
+          <td>${row.formatedIssDtTime}</td>
+          <td>${row.chainName}</td>
+          <td>${row.supAm.toLocaleString()}</td>
+          <td>${row.vatAm.toLocaleString()}</td>
+          <td>${row.sunginAm.toLocaleString()}</td>
+          <td>${row.sunginNb}</td>
+        `;
+        tr.addEventListener('click', () => {
+          if (window.opener) {
+            window.opener.postMessage({ type: 'mock:cardPicked', row }, '*');
+            window.close();
+          } else {
+            // 같은 탭 이동 시 referrer 에 postMessage 불가 → sessionStorage fallback
+            sessionStorage.setItem('mock:cardPicked', JSON.stringify(row));
+            window.location.href = 'form.html';
+          }
+        });
+        tbody.appendChild(tr);
+      }
+    }
+
+    // seed 주입 포인트. Playwright 가 page.exposeFunction 또는 evaluate 로 호출.
+    window.__mockRenderRows = renderRows;
+
+    // URL query ?rows=<base64-json> 도 지원
+    const url = new URL(location.href);
+    const q = url.searchParams.get('rows');
+    if (q) {
+      try { renderRows(JSON.parse(atob(q))); }
+      catch (e) { console.warn('[mock] rows parse failed', e); }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>품의서 작성 (mock)</title>
+  <style>
+    body { font-family: Pretendard, sans-serif; background: #f5f5f5; padding: 24px; }
+    .frame { max-width: 960px; margin: 0 auto; background: #fff; padding: 24px; border-radius: 8px; }
+    h1 { margin-top: 0; font-size: 18px; }
+    label { display: block; margin-top: 12px; font-size: 13px; color: #555; }
+    input[type=text], textarea { width: 100%; padding: 8px; box-sizing: border-box; }
+    textarea { min-height: 80px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row > input { flex: 1; }
+    button { padding: 8px 16px; background: #111; color: #fff; border: 0; cursor: pointer; }
+    button.secondary { background: #666; }
+    .actions { margin-top: 24px; display: flex; gap: 8px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <!--
+      ERP Exploration §품의서 폼 참조. 실 ERP selector 는 대략 다음과 같다:
+        - 제목:  input[name="cbizSbj"] · id="writeTitle"
+        - 용도:  dzEditor (iframe WYSIWYG) — 목업은 <textarea id="writePurpose"> 로 대체
+        - 내용:  <textarea id="writeContent">
+        - 예산:  [예산조회] 버튼 → 팝업. 목업은 <input id="budgetCode"> 로 축약.
+        - [카드사용내역] 버튼: id="btnCardHistory" → 실 ERP 는 모달; 목업은 card.html 로 이동.
+        - [결재상신] 버튼: id="btnApproval"
+      실제 DOM 과 selector 명을 최대한 일치시켜 B8~B10 의 Playwright 스크립트를 최소 수정으로 재사용.
+    -->
+    <h1>지출품의서 작성</h1>
+
+    <label for="writeTitle">제목</label>
+    <input id="writeTitle" name="cbizSbj" type="text" placeholder="지출품의서 제목">
+
+    <label for="writePurpose">용도</label>
+    <textarea id="writePurpose" name="cbizPurpose" placeholder="식후 벌칙게임 지출 사유"></textarea>
+
+    <label for="writeContent">내용</label>
+    <textarea id="writeContent" name="cbizContent"></textarea>
+
+    <label for="budgetCode">예산</label>
+    <div class="row">
+      <input id="budgetCode" name="budgetCode" type="text" placeholder="예산 코드 · [예산조회] 로 선택" readonly>
+      <button id="btnBudgetLookup" type="button" class="secondary">예산조회</button>
+    </div>
+
+    <label for="supplyAmount">공급가</label>
+    <input id="supplyAmount" name="supAm" type="text" readonly>
+    <label for="vatAmount">부가세</label>
+    <input id="vatAmount" name="vatAm" type="text" readonly>
+    <label for="totalAmount">합계</label>
+    <input id="totalAmount" name="sunginAm" type="text" readonly>
+
+    <div class="actions">
+      <button id="btnCardHistory" type="button" class="secondary">카드사용내역</button>
+      <button id="btnApproval" type="button">결재상신</button>
+    </div>
+  </div>
+
+  <script>
+    // window.Grids 스텁 — 실 ERP 의 예산조회/카드모달이 의존하는 전역.
+    // Playwright 가 page.evaluate 로 호출해 행을 주입할 수 있게 구멍만 뚫어둔다.
+    window.Grids = window.Grids || {};
+
+    document.getElementById('btnCardHistory').addEventListener('click', () => {
+      // B8 에서는 같은 페이지 내 모달로 바꿀 수 있음. 현재는 별도 html 로 라우팅.
+      window.location.href = 'card.html';
+    });
+
+    document.getElementById('btnBudgetLookup').addEventListener('click', () => {
+      // B9 에서 예산 행을 주입하는 목업.
+      document.getElementById('budgetCode').value = 'B-2026-FOOD-001';
+    });
+
+    document.getElementById('btnApproval').addEventListener('click', () => {
+      // B10 에서 결재상신 팝업으로 전환. 현재는 콘솔만.
+      console.log('[mock] approval clicked');
+      window.dispatchEvent(new CustomEvent('mock:approvalClicked'));
+    });
+
+    // card.html 이 돌아오면서 postMessage 로 카드 정보를 전달하면 폼 채우기.
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'mock:cardPicked') {
+        const row = e.data.row;
+        document.getElementById('supplyAmount').value = row.supAm;
+        document.getElementById('vatAmount').value = row.vatAm;
+        document.getElementById('totalAmount').value = row.sunginAm;
+      }
+    });
+  </script>
+</body>
+</html>

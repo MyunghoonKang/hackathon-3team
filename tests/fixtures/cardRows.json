@@ -1,0 +1,50 @@
+[
+  {
+    "bankCd": "11",
+    "bankNm": "롯데카드",
+    "cardCd": "5105545000378130",
+    "cardNm": "롯데카드_강명훈(8130)",
+    "issDt": "20260420",
+    "issTime": "132926",
+    "formatedIssDtTime": "2026-04-20 13:29:26",
+    "chainName": "스타벅스코리아",
+    "chainBusiness": "커피전문점",
+    "supAm": 4819,
+    "vatAm": 481,
+    "sunginAm": 5300,
+    "sunginNb": "68763054",
+    "payDt": "20260515"
+  },
+  {
+    "bankCd": "11",
+    "bankNm": "롯데카드",
+    "cardCd": "5105545000378130",
+    "cardNm": "롯데카드_강명훈(8130)",
+    "issDt": "20260420",
+    "issTime": "123015",
+    "formatedIssDtTime": "2026-04-20 12:30:15",
+    "chainName": "김밥천국 강남점",
+    "chainBusiness": "분식",
+    "supAm": 31818,
+    "vatAm": 3182,
+    "sunginAm": 35000,
+    "sunginNb": "68759921",
+    "payDt": "20260515"
+  },
+  {
+    "bankCd": "11",
+    "bankNm": "롯데카드",
+    "cardCd": "5105545000378130",
+    "cardNm": "롯데카드_강명훈(8130)",
+    "issDt": "20260420",
+    "issTime": "125502",
+    "formatedIssDtTime": "2026-04-20 12:55:02",
+    "chainName": "투썸플레이스 역삼점",
+    "chainBusiness": "커피전문점",
+    "supAm": 15454,
+    "vatAm": 1546,
+    "sunginAm": 17000,
+    "sunginNb": "68761138",
+    "payDt": "20260515"
+  }
+]
