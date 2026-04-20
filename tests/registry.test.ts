@@ -21,9 +21,12 @@ describe('GameRegistry', () => {
   it('rejects HTML file missing required meta', async () => {
     const fs = await import('node:fs/promises');
     await fs.writeFile('./games/invalid.html', '<html><body></body></html>');
-    await reg.scan();
-    expect(reg.list().find(x => x.filename === 'invalid.html')).toBeUndefined();
-    await fs.unlink('./games/invalid.html');
+    try {
+      await reg.scan();
+      expect(reg.list().find(x => x.filename === 'invalid.html')).toBeUndefined();
+    } finally {
+      await fs.unlink('./games/invalid.html').catch(() => {});
+    }
   });
 
   it('emits game:added event on scan', async () => {

@@ -17,6 +17,7 @@ const META_RE = /<meta\s+name=["']game:([a-zA-Z-]+)["']\s+content=["']([^"']*)["
 export class GameRegistry extends EventEmitter {
   private byId = new Map<string, GameEntry>();
   private watcher?: FSWatcher;
+  private scanTimer?: ReturnType<typeof setTimeout>;
   constructor(private opts: Options) { super(); }
 
   async scan(): Promise<void> {
@@ -58,10 +59,14 @@ export class GameRegistry extends EventEmitter {
 
   startWatching(): void {
     if (!this.opts.watch) return;
+    const debouncedScan = () => {
+      clearTimeout(this.scanTimer);
+      this.scanTimer = setTimeout(() => this.scan(), 200);
+    };
     this.watcher = chokidarWatch(this.opts.dir, { ignoreInitial: true });
-    this.watcher.on('add', () => this.scan());
-    this.watcher.on('change', () => this.scan());
-    this.watcher.on('unlink', () => this.scan());
+    this.watcher.on('add', debouncedScan);
+    this.watcher.on('change', debouncedScan);
+    this.watcher.on('unlink', debouncedScan);
   }
 
   async stop(): Promise<void> { await this.watcher?.close(); }
