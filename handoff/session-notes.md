@@ -140,3 +140,5 @@
   - 다음 단계: B8 카드매칭 — `src/server/worker/{matcher,cardModal,navigate}.ts` + `tests/matcher.test.ts`. plan §Task 8 참조. 브랜치 `feat/b-worker-login`.
 
 [3A] Task A4 완료 — roomCode 생성기 (32^4 alphabet, crypto.randomInt, 재시도 50회)
+
+[4B] Task B9 완료 — `src/server/worker/formFill.ts` (`fillForm(page, input)` · `defaultTitle(kind, when)` · `FormFillError` · `PurposeKind` · `FillInput`) + `tests/worker-formfill.test.ts` (mock coffee/lunch/budget-lookup-disabled negative + defaultTitle 포맷 2 케이스). cardModal.ts 와 동일 dual-selector 패턴 — `#writePurpose` count probe 로 mock(plain textarea) vs 실 ERP(gridView cashCd/rmkDc setValue) 분기. 예산조회는 mock `#btnBudgetLookup` 클릭 자동 채움 / 실 ERP OBTCodePicker 모달 처리 (project=3009 · budget=4001 기본). worker/index.ts 에 re-export 추가 (Step 7.3 와 동일 패턴 — orchestration 은 4A 영역). B8 (cardModal · `feat/b-worker-cardmodal` open) 와 독립 PR. 테스트 미실행 (이 환경에 node_modules 없음 — main 머지 후 `npm test` 자동 검증 가정). 4A 계약 변경 없음. 브랜치 `feat/b-worker-formfill`.
