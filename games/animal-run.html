@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta name="game:title" content="애니멀 런">
+  <meta name="game:min-players" content="2">
+  <meta name="game:max-players" content="8">
+  <meta name="game:description" content="귀여운 동물들의 스킬 대전 달리기! 꼴찌로 결승선을 통과하면 결재 담당!">
+  <meta name="game:compare" content="max">
+  <meta name="game:mode" content="shared">
+
+  <title>애니멀 런</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: #1a472a; color: #e2e8f0; overflow: hidden; }
+
+    /* ── 대기 화면 ── */
+    #waiting {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; gap: 1.5rem; animation: fadeIn 0.5s;
+    }
+    #waiting h1 { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #4ade80, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    #waiting p { font-size: 1rem; opacity: 0.6; }
+    .waiting-spinner { font-size: 2.5rem; animation: bounce 1s infinite alternate; }
+    @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+    .player-select { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+    .player-btn {
+      width: 3.5rem; height: 3.5rem; border-radius: 50%; border: 3px solid #334155;
+      background: #1e293b; color: #e2e8f0; font-size: 1.3rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .player-btn:hover { border-color: #4ade80; background: #14352a; transform: scale(1.1); }
+    .start-btn {
+      margin-top: 1rem; padding: 0.8rem 2.5rem; font-size: 1.1rem; font-weight: 700; border: none; border-radius: 1rem;
+      background: linear-gradient(135deg, #4ade80, #16a34a); color: white; cursor: pointer;
+      transition: transform 0.2s; display: none;
+    }
+    .start-btn:hover { transform: scale(1.05); }
+
+    /* ── 게임 화면 ── */
+    #game { display: none; height: 100%; position: relative; }
+    .racetrack {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(180deg, #87ceeb 0%, #87ceeb 20%, #4ade80 20%, #22c55e 100%);
+    }
+    .grass-stripes {
+      position: absolute; top: 20%; left: 0; width: 100%; height: 80%;
+      background: repeating-linear-gradient(180deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 60px);
+    }
+    .cloud { position: absolute; font-size: 2rem; opacity: 0.6; animation: cloudDrift 20s linear infinite; }
+    .cloud:nth-child(2) { top: 8%; font-size: 1.5rem; animation-duration: 25s; animation-delay: -8s; }
+    .cloud:nth-child(3) { top: 2%; font-size: 1.8rem; animation-duration: 18s; animation-delay: -15s; }
+    @keyframes cloudDrift { from { left: 110%; } to { left: -10%; } }
+    .finish-line {
+      position: absolute; right: 8%; top: 20%; width: 6px; height: 80%;
+      background: repeating-linear-gradient(180deg, #000 0px, #000 8px, #fff 8px, #fff 16px); z-index: 5;
+    }
+    .finish-flag { position: absolute; right: 6.5%; top: 14%; font-size: 2rem; z-index: 6; }
+
+    .lane { position: absolute; left: 0; width: 100%; border-bottom: 1px dashed rgba(255,255,255,0.15); }
+
+    /* 러너 */
+    .runner {
+      position: absolute; left: 3%; display: flex; flex-direction: column; align-items: center;
+      transition: left 0.05s linear; z-index: 10;
+    }
+    .runner-animal { width: 55px; height: 55px; position: relative; }
+    .runner-name {
+      font-size: 0.65rem; font-weight: 700; background: rgba(0,0,0,0.6);
+      padding: 0.1rem 0.4rem; border-radius: 0.3rem; white-space: nowrap; margin-top: -0.1rem;
+    }
+    .runner-skill {
+      font-size: 0.55rem; font-weight: 600; opacity: 0.7; margin-top: 0.1rem;
+      background: rgba(0,0,0,0.4); padding: 0.1rem 0.3rem; border-radius: 0.2rem;
+    }
+    .runner.running .runner-animal { animation: runBounce 0.3s infinite alternate; }
+    @keyframes runBounce { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-5px) rotate(2deg); } }
+    .runner.stunned .runner-animal { animation: stunSpin 0.3s infinite; filter: brightness(0.6); }
+    @keyframes stunSpin { 0%,100%{ transform: rotate(0); } 50%{ transform: rotate(10deg); } }
+    .runner.boosted .runner-animal { animation: boostGlow 0.2s infinite alternate; }
+    @keyframes boostGlow { from { filter: brightness(1.2) drop-shadow(0 0 6px gold); } to { filter: brightness(1.5) drop-shadow(0 0 12px gold); } }
+    .runner.shielded .runner-animal { filter: drop-shadow(0 0 8px #38bdf8); }
+    .runner.finished .runner-animal { animation: none; }
+    .runner.loser .runner-animal { animation: loserSad 1s infinite; opacity: 0.7; }
+    @keyframes loserSad { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(3px); } }
+
+    /* 순위 뱃지 */
+    .rank-badge {
+      position: absolute; top: -0.8rem; right: -0.5rem; width: 1.4rem; height: 1.4rem;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 900; color: white; z-index: 11; animation: popIn 0.3s;
+    }
+    @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+
+    /* 스킬 이펙트 텍스트 */
+    .skill-popup {
+      position: absolute; z-index: 50; font-size: 0.85rem; font-weight: 800;
+      color: #facc15; text-shadow: 0 0 8px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.5);
+      pointer-events: none; white-space: nowrap; animation: skillPop 1.5s forwards;
+    }
+    @keyframes skillPop {
+      0% { opacity: 1; transform: translateY(0) scale(0.8); }
+      20% { opacity: 1; transform: translateY(-10px) scale(1.1); }
+      100% { opacity: 0; transform: translateY(-40px) scale(0.9); }
+    }
+
+    /* 스킬 배너 (화면 상단) */
+    .skill-banner {
+      position: fixed; top: 2.5rem; left: 50%; transform: translateX(-50%);
+      z-index: 100; padding: 0.5rem 1.5rem; border-radius: 1rem;
+      font-size: 1rem; font-weight: 700; color: white;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+      animation: bannerSlide 2s forwards; pointer-events: none;
+    }
+    @keyframes bannerSlide {
+      0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+      15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      75% { opacity: 1; }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    }
+
+    /* 스턴 이모지 */
+    .stun-stars {
+      position: absolute; top: -1rem; left: 50%; transform: translateX(-50%);
+      font-size: 0.9rem; animation: starSpin 0.5s infinite linear; pointer-events: none;
+    }
+    @keyframes starSpin { from { transform: translateX(-50%) rotate(0deg); } to { transform: translateX(-50%) rotate(360deg); } }
+
+    /* 텔레포트 이펙트 */
+    .teleport-trail {
+      position: absolute; z-index: 9; pointer-events: none;
+      width: 30px; height: 30px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(168,85,247,0.8), transparent);
+      animation: teleportFade 0.5s forwards;
+    }
+    @keyframes teleportFade { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(2); } }
+
+    /* 타이머 */
+    .timer-bar {
+      position: absolute; top: 0; left: 0; width: 100%; height: 4px; z-index: 20; background: rgba(0,0,0,0.3);
+    }
+    .timer-fill {
+      height: 100%; background: linear-gradient(90deg, #4ade80, #facc15, #f43f5e);
+      transition: width 0.1s linear;
+    }
+    .timer-text {
+      position: absolute; top: 6px; right: 1rem; z-index: 20;
+      font-size: 0.85rem; font-weight: 700; opacity: 0.8;
+      background: rgba(0,0,0,0.5); padding: 0.15rem 0.5rem; border-radius: 0.3rem;
+    }
+
+    /* 먼지 */
+    .dust {
+      position: absolute; width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(200,180,150,0.6); pointer-events: none; z-index: 9;
+      animation: dustFade 0.6s forwards;
+    }
+    @keyframes dustFade { 0% { opacity: 1; } 100% { opacity: 0; transform: scale(0.2) translateX(-20px); } }
+
+    /* 카운트다운 */
+    #countdown {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 150; background: rgba(0,0,0,0.6);
+      align-items: center; justify-content: center; font-size: 8rem; font-weight: 900;
+      color: #4ade80; text-shadow: 0 0 40px rgba(74,222,128,0.5);
+    }
+    #countdown.active { display: flex; }
+    .cd-num { animation: cdPop 0.8s; }
+    @keyframes cdPop { 0%{ transform:scale(2);opacity:0; } 50%{ transform:scale(1);opacity:1; } 100%{ transform:scale(1);opacity:0.8; } }
+
+    /* 결과 오버레이 */
+    .result-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 200; background: rgba(0,0,0,0.85);
+      flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem;
+    }
+    .result-overlay.active { display: flex; animation: fadeIn 0.5s; }
+    .result-overlay h2 {
+      font-size: 2rem; font-weight: 800;
+      background: linear-gradient(135deg, #4ade80, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .result-board { display: flex; flex-direction: column; gap: 0.5rem; }
+    .result-row {
+      display: flex; align-items: center; gap: 0.8rem; padding: 0.4rem 1.2rem;
+      background: rgba(255,255,255,0.05); border-radius: 0.8rem; font-size: 1rem;
+    }
+    .result-row.loser-row { background: rgba(244,63,94,0.2); border: 2px solid #f43f5e; }
+    .result-rank { font-weight: 900; font-size: 1.2rem; width: 2rem; text-align: center; }
+    .result-animal { width: 36px; height: 36px; }
+    .result-name { font-weight: 600; flex: 1; }
+    .result-tag { font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 0.3rem; font-weight: 700; }
+    .loser-msg { font-size: 1.2rem; color: #f43f5e; font-weight: 700; animation: loserPulse 1s infinite alternate; }
+    @keyframes loserPulse { from { opacity: 0.7; } to { opacity: 1; transform: scale(1.05); } }
+
+    .game-header {
+      position: absolute; top: 0.5rem; left: 50%; transform: translateX(-50%);
+      text-align: center; z-index: 15; background: rgba(0,0,0,0.4); padding: 0.2rem 1rem; border-radius: 1rem;
+    }
+    .game-header h1 { font-size: 0.9rem; font-weight: 700; opacity: 0.8; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+<div id="waiting">
+  <h1>애니멀 런</h1>
+  <div class="waiting-spinner">🐾</div>
+  <p id="waitingMsg">플레이어 대기 중…</p>
+  <div id="testMode" style="margin-top:1rem; display:none;">
+    <p style="font-size:0.85rem; opacity:0.7; margin-bottom:0.8rem;">테스트 모드 — 인원 수를 선택하세요</p>
+    <div class="player-select" id="playerSelect"></div>
+    <button class="start-btn" id="startBtn">게임 시작!</button>
+  </div>
+</div>
+
+<div id="game">
+  <div class="racetrack">
+    <div class="grass-stripes"></div>
+    <div class="cloud" style="top:5%">☁️</div>
+    <div class="cloud">☁️</div>
+    <div class="cloud">⛅</div>
+    <div class="finish-line"></div>
+    <div class="finish-flag">🏁</div>
+  </div>
+  <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+  <div class="timer-text" id="timerText">30s</div>
+  <div class="game-header"><h1>애니멀 런</h1></div>
+  <div id="lanes"></div>
+</div>
+
+<div id="countdown"></div>
+<div class="result-overlay" id="resultOverlay">
+  <h2>레이스 결과</h2>
+  <div class="result-board" id="resultBoard"></div>
+  <div class="loser-msg" id="loserMsg"></div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────
+// GameSDK
+// ──────────────────────────────────────────────────────────
+const GameSDK = (() => {
+  let me = null, players = [], sessionId = null, seed = null;
+  const submitted = new Set();
+  const handlers = { init: null, start: null, outcome: null };
+  function send(msg) { window.parent.postMessage(msg, '*'); }
+  function on(type, fn) { handlers[type] = fn; }
+  window.addEventListener('message', (e) => {
+    const msg = e.data;
+    if (!msg || !msg.type) return;
+    if (msg.type === 'init') {
+      me = msg.playerId; players = msg.players; sessionId = msg.sessionId; seed = msg.seed;
+      handlers.init?.({ me, players, sessionId, seed });
+      send({ type: 'ready' });
+    } else if (msg.type === 'start') { handlers.start?.(); }
+    else if (msg.type === 'outcome') { handlers.outcome?.({ loserId: msg.loserId, results: msg.results }); }
+  });
+  function submit(playerId, value) {
+    if (submitted.has(playerId)) return;
+    if (typeof value !== 'number' || Number.isNaN(value)) return;
+    submitted.add(playerId); send({ type: 'submit', playerId, value });
+  }
+  function prng(s) {
+    let a = 0; const str = s || seed || String(Date.now());
+    for (let i = 0; i < str.length; i++) a = (a * 31 + str.charCodeAt(i)) | 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  return { on, submit, prng, state: () => ({ me, players, sessionId, seed }) };
+})();
+
+// ──────────────────────────────────────────────────────────
+// 동물 + 스킬 정의
+// ──────────────────────────────────────────────────────────
+const ANIMALS = [
+  { name: '고양이', emoji: '🐱', color: '#f97316', skill: { name: '날카로운 발톱', icon: '🐾', type: 'stun_one', desc: '1등 2.5초 기절' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="38" rx="16" ry="14" fill="${c}"/><circle cx="30" cy="22" r="12" fill="${c}"/><polygon points="20,14 18,2 26,10" fill="${c}"/><polygon points="40,14 42,2 34,10" fill="${c}"/><ellipse cx="25" cy="21" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="35" cy="21" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="26" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="36" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="30" cy="26" rx="2" ry="1.5" fill="#f9a8d4"/><path d="M28 28 Q30 30 32 28" stroke="#1a1a2e" stroke-width="1" fill="none"/><line x1="16" y1="24" x2="10" y2="22" stroke="#1a1a2e" stroke-width="0.8"/><line x1="16" y1="26" x2="10" y2="27" stroke="#1a1a2e" stroke-width="0.8"/><line x1="44" y1="24" x2="50" y2="22" stroke="#1a1a2e" stroke-width="0.8"/><line x1="44" y1="26" x2="50" y2="27" stroke="#1a1a2e" stroke-width="0.8"/><path d="M46 38 Q52 30 50 42" stroke="${c}" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="22" cy="52" rx="5" ry="4" fill="${c}"/><ellipse cx="38" cy="52" rx="5" ry="4" fill="${c}"/></svg>` },
+  { name: '강아지', emoji: '🐶', color: '#92400e', skill: { name: '돌진!', icon: '💨', type: 'boost_self', desc: '3초간 2.5배속' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="38" rx="16" ry="14" fill="${c}"/><circle cx="30" cy="22" r="12" fill="${c}"/><ellipse cx="17" cy="18" rx="7" ry="10" fill="#b45309" transform="rotate(-15 17 18)"/><ellipse cx="43" cy="18" rx="7" ry="10" fill="#b45309" transform="rotate(15 43 18)"/><ellipse cx="25" cy="21" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="35" cy="21" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="26" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="36" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="30" cy="27" rx="3" ry="2" fill="#1a1a2e"/><path d="M27 30 Q30 33 33 30" stroke="#f87171" stroke-width="2" fill="#f87171" opacity="0.6"/><ellipse cx="22" cy="52" rx="5" ry="4" fill="${c}"/><ellipse cx="38" cy="52" rx="5" ry="4" fill="${c}"/></svg>` },
+  { name: '토끼', emoji: '🐰', color: '#e879f9', skill: { name: '순간이동', icon: '✨', type: 'teleport', desc: '앞으로 5% 점프' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="40" rx="14" ry="13" fill="${c}"/><circle cx="30" cy="26" r="11" fill="${c}"/><ellipse cx="23" cy="8" rx="4" ry="14" fill="${c}"/><ellipse cx="37" cy="8" rx="4" ry="14" fill="${c}"/><ellipse cx="23" cy="8" rx="2.5" ry="10" fill="#fda4af"/><ellipse cx="37" cy="8" rx="2.5" ry="10" fill="#fda4af"/><ellipse cx="25" cy="24" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="35" cy="24" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="26" cy="23" rx="1.2" ry="1.2" fill="white"/><ellipse cx="36" cy="23" rx="1.2" ry="1.2" fill="white"/><ellipse cx="30" cy="30" rx="2" ry="1.5" fill="#fda4af"/><ellipse cx="21" cy="30" rx="4" ry="3" fill="#fda4af" opacity="0.3"/><ellipse cx="39" cy="30" rx="4" ry="3" fill="#fda4af" opacity="0.3"/><ellipse cx="22" cy="53" rx="5" ry="3.5" fill="${c}"/><ellipse cx="38" cy="53" rx="5" ry="3.5" fill="${c}"/><circle cx="34" cy="50" r="4" fill="white"/></svg>` },
+  { name: '거북이', emoji: '🐢', color: '#14b8a6', skill: { name: '등껍질 방어', icon: '🛡️', type: 'shield', desc: '1.5초간 스킬 면역 (부스트 없음)' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="36" rx="18" ry="15" fill="#166534"/><ellipse cx="30" cy="35" rx="16" ry="13" fill="${c}"/><path d="M22 30 L30 24 L38 30 L34 38 L26 38 Z" fill="#0d9488" opacity="0.5"/><circle cx="38" cy="22" r="8" fill="#86efac"/><ellipse cx="36" cy="21" rx="2" ry="2.5" fill="#1a1a2e"/><ellipse cx="42" cy="21" rx="2" ry="2.5" fill="#1a1a2e"/><path d="M38 25 Q40 27 42 25" stroke="#1a1a2e" stroke-width="1" fill="none"/><ellipse cx="16" cy="44" rx="5" ry="3" fill="#86efac"/><ellipse cx="44" cy="44" rx="5" ry="3" fill="#86efac"/><ellipse cx="18" cy="28" rx="4" ry="3" fill="#86efac"/><ellipse cx="42" cy="28" rx="4" ry="3" fill="#86efac"/></svg>` },
+  { name: '햄스터', emoji: '🐹', color: '#fb923c', skill: { name: '해바라기씨 투척', icon: '🌻', type: 'slow_one', desc: '1등 3초 감속' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="36" rx="17" ry="16" fill="${c}"/><ellipse cx="30" cy="38" rx="12" ry="10" fill="#fed7aa"/><circle cx="30" cy="24" r="13" fill="${c}"/><ellipse cx="18" cy="16" rx="5" ry="5" fill="${c}"/><ellipse cx="42" cy="16" rx="5" ry="5" fill="${c}"/><ellipse cx="18" cy="16" rx="3" ry="3" fill="#fda4af"/><ellipse cx="42" cy="16" rx="3" ry="3" fill="#fda4af"/><ellipse cx="25" cy="23" rx="3" ry="3" fill="#1a1a2e"/><ellipse cx="35" cy="23" rx="3" ry="3" fill="#1a1a2e"/><ellipse cx="26" cy="22" rx="1.2" ry="1.2" fill="white"/><ellipse cx="36" cy="22" rx="1.2" ry="1.2" fill="white"/><ellipse cx="30" cy="28" rx="2" ry="1.5" fill="#f9a8d4"/><ellipse cx="21" cy="28" rx="5" ry="3.5" fill="#fda4af" opacity="0.4"/><ellipse cx="39" cy="28" rx="5" ry="3.5" fill="#fda4af" opacity="0.4"/><ellipse cx="22" cy="52" rx="4" ry="3" fill="${c}"/><ellipse cx="38" cy="52" rx="4" ry="3" fill="${c}"/></svg>` },
+  { name: '펭귄', emoji: '🐧', color: '#1e293b', skill: { name: '빙판길', icon: '🧊', type: 'slow_all', desc: '전원 3초 감속 + 자신 부스트' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="36" rx="15" ry="18" fill="${c}"/><ellipse cx="30" cy="38" rx="10" ry="14" fill="white"/><circle cx="30" cy="20" r="11" fill="${c}"/><ellipse cx="25" cy="19" rx="3" ry="3" fill="white"/><ellipse cx="35" cy="19" rx="3" ry="3" fill="white"/><ellipse cx="25" cy="19" rx="2" ry="2.5" fill="#1a1a2e"/><ellipse cx="35" cy="19" rx="2" ry="2.5" fill="#1a1a2e"/><polygon points="30,23 27,28 33,28" fill="#f97316"/><ellipse cx="14" cy="36" rx="4" ry="8" fill="${c}" transform="rotate(15 14 36)"/><ellipse cx="46" cy="36" rx="4" ry="8" fill="${c}" transform="rotate(-15 46 36)"/><ellipse cx="24" cy="54" rx="5" ry="2.5" fill="#f97316"/><ellipse cx="36" cy="54" rx="5" ry="2.5" fill="#f97316"/></svg>` },
+  { name: '여우', emoji: '🦊', color: '#ea580c', skill: { name: '꾀', icon: '🔄', type: 'swap_ahead', desc: '바로 앞 주자와 위치 교환' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="38" rx="14" ry="14" fill="${c}"/><circle cx="30" cy="24" r="12" fill="${c}"/><polygon points="19,16 14,0 26,12" fill="${c}"/><polygon points="41,16 46,0 34,12" fill="${c}"/><polygon points="19,16 16,4 25,12" fill="#fed7aa"/><polygon points="41,16 44,4 35,12" fill="#fed7aa"/><ellipse cx="25" cy="22" rx="2.5" ry="3" fill="#1a1a2e"/><ellipse cx="35" cy="22" rx="2.5" ry="3" fill="#1a1a2e"/><ellipse cx="26" cy="21" rx="1" ry="1" fill="white"/><ellipse cx="36" cy="21" rx="1" ry="1" fill="white"/><ellipse cx="30" cy="27" rx="2" ry="1.5" fill="#1a1a2e"/><path d="M26 30 Q30 26 34 30" fill="white"/><path d="M46 38 Q56 34 54 44 Q50 38 46 40" fill="white"/><ellipse cx="22" cy="52" rx="5" ry="3.5" fill="${c}"/><ellipse cx="38" cy="52" rx="5" ry="3.5" fill="${c}"/></svg>` },
+  { name: '곰', emoji: '🐻', color: '#78350f', skill: { name: '포효!', icon: '🔊', type: 'stun_top', desc: '상위 2명 2.5초 기절' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="38" rx="17" ry="16" fill="${c}"/><circle cx="30" cy="22" r="13" fill="${c}"/><circle cx="18" cy="13" r="6" fill="${c}"/><circle cx="42" cy="13" r="6" fill="${c}"/><circle cx="18" cy="13" r="3.5" fill="#a16207"/><circle cx="42" cy="13" r="3.5" fill="#a16207"/><ellipse cx="25" cy="21" rx="3" ry="3" fill="#1a1a2e"/><ellipse cx="35" cy="21" rx="3" ry="3" fill="#1a1a2e"/><ellipse cx="26" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="36" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="30" cy="27" rx="3" ry="2.5" fill="#a16207"/><ellipse cx="30" cy="26" rx="2" ry="1.5" fill="#1a1a2e"/><path d="M28 29 Q30 31 32 29" stroke="#1a1a2e" stroke-width="1" fill="none"/><ellipse cx="22" cy="54" rx="6" ry="3.5" fill="${c}"/><ellipse cx="38" cy="54" rx="6" ry="3.5" fill="${c}"/></svg>` },
+];
+
+// ──────────────────────────────────────────────────────────
+// 게임 상태
+// ──────────────────────────────────────────────────────────
+let playerCount = 0, gamePlayers = [], rand = null;
+let runners = [];
+const FINISH_LINE = 85;
+const RACE_DURATION = 20000; // 20초
+const BASE_SPEED = 4.1; // %/초 (약 82% / 20초)
+
+// ──────────────────────────────────────────────────────────
+// 플랫폼 연동
+// ──────────────────────────────────────────────────────────
+let platformConnected = false;
+GameSDK.on('init', ({ players, seed }) => {
+  platformConnected = true;
+  gamePlayers = players; playerCount = players.length;
+  rand = GameSDK.prng(seed);
+  document.getElementById('waiting').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+  setupRace();
+});
+GameSDK.on('start', () => { runCountdown(() => startRace()); });
+
+// 테스트 모드
+setTimeout(() => {
+  if (platformConnected) return;
+  document.getElementById('testMode').style.display = 'block';
+  document.getElementById('waitingMsg').textContent = '플랫폼 미연결 — 테스트 모드';
+  const selectEl = document.getElementById('playerSelect');
+  const startBtnEl = document.getElementById('startBtn');
+  let sel = 0;
+  for (let i = 2; i <= 8; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'player-btn'; btn.textContent = i;
+    btn.onclick = () => {
+      selectEl.querySelectorAll('.player-btn').forEach(b => { b.style.borderColor='#334155'; b.style.background='#1e293b'; });
+      btn.style.borderColor='#4ade80'; btn.style.background='#14352a'; sel = i; startBtnEl.style.display='block';
+    };
+    selectEl.appendChild(btn);
+  }
+  startBtnEl.onclick = () => {
+    if (sel < 2) return;
+    const names = ['강명훈','이서연','박찬영','김태호','정수빈','최유진','한도윤','윤지아'];
+    gamePlayers = []; for (let i = 0; i < sel; i++) gamePlayers.push({ id:`p${i+1}`, name: names[i] });
+    playerCount = sel; rand = GameSDK.prng(String(Date.now()));
+    document.getElementById('waiting').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
+    setupRace(); runCountdown(() => startRace());
+  };
+}, 2000);
+
+// ──────────────────────────────────────────────────────────
+// 레이스 세팅
+// ──────────────────────────────────────────────────────────
+function setupRace() {
+  const lanesEl = document.getElementById('lanes');
+  lanesEl.innerHTML = '';
+  runners = [];
+
+  const pool = [...Array(ANIMALS.length).keys()];
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rand()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+
+  const laneH = 80 / playerCount;
+
+  gamePlayers.forEach((p, i) => {
+    const ai = pool[i % pool.length];
+    const animal = ANIMALS[ai];
+    const speedVar = 0.85 + rand() * 0.3; // 0.85~1.15x
+
+    runners.push({
+      id: p.id, name: p.name, animalIdx: ai, progress: 3,
+      baseSpeed: BASE_SPEED * speedVar, speedMul: 1,
+      finished: false, finishTime: 0, rank: 0,
+      // 스킬
+      nextSkill: 500 + rand() * 2500, // 0.5~3초 후 첫 스킬
+      skillCooldown: 500, // 최소 0.5초
+      // 상태
+      stunUntil: 0, slowUntil: 0, boostUntil: 0, shieldUntil: 0,
+    });
+
+    const laneY = 20 + i * laneH + laneH / 2;
+    const el = document.createElement('div');
+    el.className = 'runner'; el.id = `runner-${p.id}`;
+    el.style.top = `${laneY}%`; el.style.transform = 'translateY(-50%)';
+    el.innerHTML = `
+      <div class="runner-animal" id="animal-${p.id}">${animal.body(animal.color)}</div>
+      <div class="runner-name">${animal.emoji} ${p.name}</div>
+      <div class="runner-skill">${animal.skill.icon} ${animal.skill.name}</div>
+    `;
+    lanesEl.appendChild(el);
+
+    if (i < playerCount - 1) {
+      const lane = document.createElement('div');
+      lane.className = 'lane'; lane.style.top = `${20 + (i+1) * laneH}%`;
+      lanesEl.appendChild(lane);
+    }
+  });
+}
+
+// ──────────────────────────────────────────────────────────
+// 카운트다운
+// ──────────────────────────────────────────────────────────
+function runCountdown(cb) {
+  const el = document.getElementById('countdown');
+  el.classList.add('active'); let c = 3;
+  function tick() {
+    if (c > 0) { el.innerHTML = `<span class="cd-num">${c}</span>`; c--; setTimeout(tick, 900); }
+    else { el.innerHTML = `<span class="cd-num" style="color:#facc15">GO!</span>`; setTimeout(() => { el.classList.remove('active'); cb(); }, 600); }
+  }
+  tick();
+}
+
+// ──────────────────────────────────────────────────────────
+// 스킬 실행
+// ──────────────────────────────────────────────────────────
+function executeSkill(r, elapsed) {
+  const animal = ANIMALS[r.animalIdx];
+  const skill = animal.skill;
+  const others = runners.filter(x => x.id !== r.id && !x.finished);
+  if (others.length === 0) return;
+
+  showBanner(`${animal.emoji} ${r.name}의 ${skill.icon} ${skill.name}!`);
+  showSkillPopup(r.id, `${skill.icon} ${skill.name}`);
+
+  switch (skill.type) {
+    case 'stun_one': {
+      // 1등 타겟
+      const sorted = others.sort((a,b) => b.progress - a.progress);
+      const target = sorted[0];
+      if (!target) break;
+      if (target.shieldUntil > elapsed) { showSkillPopup(target.id, '🛡️ 방어!'); break; }
+      target.stunUntil = elapsed + 2500;
+      showSkillPopup(target.id, '😵 기절!');
+      break;
+    }
+    case 'boost_self':
+      r.boostUntil = elapsed + 3000;
+      break;
+    case 'teleport': {
+      const oldProg = r.progress;
+      r.progress = Math.min(r.progress + 5, FINISH_LINE - 1);
+      spawnTeleportTrail(r.id, oldProg);
+      break;
+    }
+    case 'shield':
+      r.shieldUntil = elapsed + 1500;
+      break;
+    case 'slow_one': {
+      // 1등 타겟
+      const sorted = others.sort((a,b) => b.progress - a.progress);
+      const target = sorted[0];
+      if (!target) break;
+      if (target.shieldUntil > elapsed) { showSkillPopup(target.id, '🛡️ 방어!'); break; }
+      target.slowUntil = elapsed + 3000;
+      showSkillPopup(target.id, '🌻 감속!');
+      break;
+    }
+    case 'slow_all':
+      others.forEach(t => {
+        if (t.shieldUntil > elapsed) { showSkillPopup(t.id, '🛡️ 방어!'); return; }
+        t.slowUntil = elapsed + 3000;
+        showSkillPopup(t.id, '🧊 빙판!');
+      });
+      r.boostUntil = elapsed + 3000; // 자신은 부스트
+      break;
+    case 'swap_ahead': {
+      // 바로 앞 주자와 교환
+      const ahead = others.filter(x => x.progress > r.progress).sort((a,b) => a.progress - b.progress);
+      const target = ahead[0];
+      if (target) {
+        if (target.shieldUntil > elapsed) { showSkillPopup(target.id, '🛡️ 방어!'); break; }
+        const tmp = r.progress; r.progress = target.progress; target.progress = tmp;
+        showSkillPopup(target.id, '🔄 교환!');
+        spawnTeleportTrail(r.id, tmp);
+        spawnTeleportTrail(target.id, r.progress);
+      }
+      break;
+    }
+    case 'stun_top': {
+      // 상위 2명만 기절
+      const sorted = others.sort((a,b) => b.progress - a.progress);
+      const tops = sorted.slice(0, 2);
+      tops.forEach(t => {
+        if (t.shieldUntil > elapsed) { showSkillPopup(t.id, '🛡️ 방어!'); return; }
+        t.stunUntil = elapsed + 2500;
+        showSkillPopup(t.id, '😵 기절!');
+      });
+      break;
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// 레이스 루프
+// ──────────────────────────────────────────────────────────
+let raceStart = 0, finishCount = 0, lastFrame = 0;
+
+function startRace() {
+  raceStart = performance.now(); lastFrame = raceStart; finishCount = 0;
+  runners.forEach(r => document.getElementById(`runner-${r.id}`).classList.add('running'));
+  requestAnimationFrame(raceLoop);
+}
+
+function raceLoop(now) {
+  const elapsed = now - raceStart;
+  const dt = (now - lastFrame) / 1000; // 초 단위
+  lastFrame = now;
+
+  // 타이머 업데이트
+  const remain = Math.max(0, RACE_DURATION - elapsed);
+  document.getElementById('timerText').textContent = Math.ceil(remain / 1000) + 's';
+  document.getElementById('timerFill').style.width = ((RACE_DURATION - remain) / RACE_DURATION * 100) + '%';
+
+  let allFinished = true;
+
+  runners.forEach(r => {
+    if (r.finished) return;
+    allFinished = false;
+
+    const el = document.getElementById(`runner-${r.id}`);
+
+    // 상태 체크
+    const isStunned = elapsed < r.stunUntil;
+    const isSlowed = elapsed < r.slowUntil;
+    const isBoosted = elapsed < r.boostUntil;
+    const isShielded = elapsed < r.shieldUntil;
+
+    // CSS 클래스 업데이트
+    el.classList.toggle('stunned', isStunned);
+    el.classList.toggle('boosted', isBoosted && !isStunned);
+    el.classList.toggle('shielded', isShielded);
+    el.classList.toggle('running', !isStunned && !isBoosted);
+
+    // 스턴 별 표시
+    let stars = el.querySelector('.stun-stars');
+    if (isStunned && !stars) {
+      stars = document.createElement('div');
+      stars.className = 'stun-stars'; stars.textContent = '⭐💫';
+      el.querySelector('.runner-animal').appendChild(stars);
+    } else if (!isStunned && stars) { stars.remove(); }
+
+    // 스킬 발동
+    if (elapsed > r.nextSkill && !isStunned) {
+      executeSkill(r, elapsed);
+      r.nextSkill = elapsed + r.skillCooldown + rand() * 2500;
+    }
+
+    // 이동
+    if (!isStunned) {
+      let mul = 1;
+      if (isSlowed) mul *= 0.4;
+      if (isBoosted) mul *= 2.5;
+      r.progress += r.baseSpeed * mul * dt;
+
+      if (Math.random() < 0.06) spawnDust(r.id, r.progress);
+    }
+
+    // 30초 지나면 강제 부스트 (마무리)
+    if (elapsed > RACE_DURATION && !isStunned) {
+      r.progress += 5 * dt;
+    }
+
+    // 결승선
+    if (r.progress >= FINISH_LINE) {
+      r.progress = FINISH_LINE;
+      r.finished = true;
+      r.finishTime = elapsed;
+      finishCount++; r.rank = finishCount;
+      el.className = 'runner finished';
+      el.style.left = FINISH_LINE + '%';
+      // 뱃지
+      const badge = document.createElement('div');
+      badge.className = 'rank-badge';
+      badge.style.background = ['#facc15','#94a3b8','#cd7f32'][r.rank-1] || '#64748b';
+      badge.textContent = r.rank;
+      el.querySelector('.runner-animal').appendChild(badge);
+      if (finishCount === runners.length) { el.className = 'runner loser'; }
+      return;
+    }
+
+    el.style.left = r.progress + '%';
+  });
+
+  if (allFinished) { setTimeout(showResults, 1000); return; }
+  requestAnimationFrame(raceLoop);
+}
+
+// ──────────────────────────────────────────────────────────
+// 이펙트 헬퍼
+// ──────────────────────────────────────────────────────────
+function showBanner(text) {
+  const b = document.createElement('div');
+  b.className = 'skill-banner'; b.textContent = text;
+  document.body.appendChild(b);
+  setTimeout(() => b.remove(), 2200);
+}
+
+function showSkillPopup(playerId, text) {
+  const el = document.getElementById(`runner-${playerId}`);
+  if (!el) return;
+  const p = document.createElement('div');
+  p.className = 'skill-popup'; p.textContent = text;
+  p.style.left = el.style.left; p.style.top = el.style.top;
+  document.getElementById('lanes').appendChild(p);
+  setTimeout(() => p.remove(), 1500);
+}
+
+function spawnTeleportTrail(playerId, fromProgress) {
+  const el = document.getElementById(`runner-${playerId}`);
+  if (!el) return;
+  for (let i = 0; i < 5; i++) {
+    const t = document.createElement('div');
+    t.className = 'teleport-trail';
+    t.style.left = (fromProgress + i * 2) + '%'; t.style.top = el.style.top;
+    document.getElementById('lanes').appendChild(t);
+    setTimeout(() => t.remove(), 600);
+  }
+}
+
+function spawnDust(playerId, progress) {
+  const el = document.getElementById(`runner-${playerId}`);
+  if (!el) return;
+  const d = document.createElement('div');
+  d.className = 'dust';
+  d.style.left = (progress - 1) + '%'; d.style.top = el.style.top;
+  d.style.width = d.style.height = (4 + Math.random()*5) + 'px';
+  document.getElementById('lanes').appendChild(d);
+  setTimeout(() => d.remove(), 600);
+}
+
+// ──────────────────────────────────────────────────────────
+// 결과
+// ──────────────────────────────────────────────────────────
+function showResults() {
+  const sorted = [...runners].sort((a,b) => a.rank - b.rank);
+  const loser = sorted[sorted.length - 1];
+
+  sorted.forEach(r => GameSDK.submit(r.id, r.rank));
+
+  const board = document.getElementById('resultBoard');
+  board.innerHTML = '';
+  const medals = ['🥇','🥈','🥉'];
+
+  sorted.forEach((r, i) => {
+    const animal = ANIMALS[r.animalIdx];
+    const isLoser = r.id === loser.id;
+    const row = document.createElement('div');
+    row.className = 'result-row' + (isLoser ? ' loser-row' : '');
+    row.innerHTML = `
+      <div class="result-rank">${medals[i] || (i+1)}</div>
+      <div class="result-animal">${animal.body(animal.color)}</div>
+      <div class="result-name">${animal.emoji} ${r.name}</div>
+      <div class="result-tag" style="background:${isLoser?'#f43f5e':'rgba(74,222,128,0.2)'}; color:${isLoser?'white':'#4ade80'}">
+        ${isLoser ? '꽝! 결재 담당' : '세이프'}
+      </div>
+    `;
+    board.appendChild(row);
+  });
+
+  document.getElementById('loserMsg').textContent = `${loser.name}님, 결재 상신 부탁드립니다 📋`;
+  document.getElementById('resultOverlay').classList.add('active');
+}
+</script>
+</body>
+</html>
