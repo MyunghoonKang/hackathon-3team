@@ -93,3 +93,12 @@
   - 미완 / 이월: `POST /api/sessions/:id/credential-input` (FINISHED → CREDENTIAL_INPUT 전이 + broadcast) 는 SessionManager(A5) · io 인스턴스 필요 → B11 submissions.ts 라우터에서 함께 구현 예정 (플랜 Step 3 §450 선택지 준수).
   - supertest / @types/supertest devDep 추가 (package.json).
   - 다음 단계: B4 SubmissionQueue 상태머신.
+
+[4A] 2026-04-20 — Task B4 완료 — SubmissionQueue 상태머신 (11 tests pass).
+  - src/server/submissions/{types,queue}.ts 신설. 플랜의 별도 SubmissionStatus enum / claimedAt / mode·attendees 필드는 실제 schema(공동 계약)와 어긋나 schema-진실 원칙으로 적용 — RoomStatus enum + attempts/updatedAt 만 사용.
+  - API: enqueue(input) · claimNext(now) · complete(id, {erpRefNo}) · fail(id, {errorLog}) · updateWorkerStep(id, step) · recoverStuck({thresholdMs, now?}) · loadForRun(id) · countByStatus().
+  - 동시성: 후보 SELECT 후 `WHERE id=? AND status='QUEUED'` 조건부 UPDATE → SQLite write 직렬화 + WAL 로 race-free. claim 시 attempts++, workerStep/errorLog clear.
+  - recoverStuck: RUNNING & updatedAt ≤ (now - thresholdMs) → QUEUED 로 복귀. claimNext 가 updatedAt 을 `now` 인자로 stamp 해서 테스트 가능 (실시간 의존 X).
+  - 큐 자체는 broadcast 안 함. 호출자(Scheduler/B11/workerHook)가 transitionStatus + broadcastRoomState 로 RoomStatePayload(submissionId · scheduledAt · workerStep · erpRefNo · errorLog) 전파 책임.
+  - 테스트(tests/queue.test.ts) 11 케이스: enqueue · claim QUEUED→RUNNING + attempts++ · idempotent claim · 미래 scheduledAt skip · 가장 오래된 due 우선 · complete · fail · updateWorkerStep · recoverStuck stuck reset · recoverStuck recent untouched · loadForRun.
+  - 다음 단계: B5 Scheduler (분당 polling + nextBusinessDayNineAm Asia/Seoul) · runSubmission 호출.

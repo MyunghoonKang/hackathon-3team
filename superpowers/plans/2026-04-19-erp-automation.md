@@ -465,7 +465,7 @@ git commit -m "feat(credentials): vault + POST /api/credentials + CredentialForm
 - Create: `src/server/submissions/queue.ts`, `src/server/submissions/types.ts`
 - Test: `tests/queue.test.ts`
 
-- [ ] **Step 4.1: 실패하는 큐 테스트**
+- [x] **Step 4.1: 실패하는 큐 테스트**
 
 ```typescript
 // tests/queue.test.ts
@@ -544,7 +544,7 @@ describe('SubmissionQueue', () => {
 
 Run: `npx vitest run tests/queue.test.ts` → FAIL
 
-- [ ] **Step 4.2: `src/server/submissions/types.ts`**
+- [x] **Step 4.2: `src/server/submissions/types.ts`**
 
 ```typescript
 export type SubmissionStatus =
@@ -576,7 +576,7 @@ export interface FailInput {
 }
 ```
 
-- [ ] **Step 4.3: `src/server/submissions/queue.ts`**
+- [x] **Step 4.3: `src/server/submissions/queue.ts`**
 
 ```typescript
 import { and, eq, lt, sql } from 'drizzle-orm';
@@ -649,7 +649,7 @@ export class SubmissionQueue {
 }
 ```
 
-- [ ] **Step 4.4: 테스트 PASS → 커밋**
+- [x] **Step 4.4: 테스트 PASS → 커밋**
 
 ```bash
 npx vitest run tests/queue.test.ts
