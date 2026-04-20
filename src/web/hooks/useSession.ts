@@ -73,7 +73,7 @@ export function useSession() {
 
   const create = useCallback(async (hostName: string): Promise<RoomStatePayload> => {
     return new Promise((resolve, reject) => {
-      socket.emit('session:create', { hostName }, (ack: CreateAck) => {
+      socket.emit('session:create', { name: hostName }, (ack: CreateAck) => {
         const snap = toPayload(ack?.session);
         if (ack?.error || !snap) return reject(new Error(ack?.error ?? 'create failed'));
         replaceSession(snap);

@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:server": "tsx watch src/server/index.ts",
-    "dev:web": "vite",
+    "dev:server": "node --env-file=.env --import=tsx --watch src/server/index.ts",
+    "dev:web": "vite --host",
     "dev": "npm run dev:server & npm run dev:web",
     "build:web": "vite build",
     "start": "node --import tsx src/server/index.ts",

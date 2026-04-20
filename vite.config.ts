@@ -12,7 +12,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': 'http://localhost:3000',
-      '/socket.io': { target: 'ws://localhost:3000', ws: true },
+      '/socket.io': { target: 'http://localhost:3000', ws: true, changeOrigin: true },
       '/games': 'http://localhost:3000',
     },
   },
