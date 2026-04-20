@@ -74,3 +74,11 @@
   - .gitignore: data/ · *.db · .claude/ · dist/ · node_modules/.
   - 검증: db:migrate 0001_init.sql 적용 OK · /api/health 200 · vite build 232KB OK · typecheck 깨끗.
   - 다음 단계: B1 DB 마이그레이션 이미 포함됨 → B2 CredentialVault (AES-256-GCM round-trip) 로 직행.
+
+[4A] 2026-04-20 — Task B2 완료 — AES-256-GCM CredentialVault round-trip OK (7 tests pass).
+  - src/server/vault/{crypto,types,vault}.ts · src/server/db/client.ts · src/server/config.ts · tests/vault.test.ts.
+  - loginId/password 각각 독립 IV(12B) · authTag(16B). iv 컬럼=base64(iv_L||iv_P)=24B, auth_tag=base64(tag_L||tag_P)=32B 로 패킹 저장 → 스키마 변경 없이 GCM nonce-reuse 회피.
+  - sessionId UNIQUE, onConflictDoUpdate 로 재저장 허용. 잘못된 키 → authTag mismatch throw 검증됨.
+  - createDb(':memory:') 는 drizzle/*.sql 자동 실행 (테스트 편의). 실제 서버는 기존 migrate.ts 유지.
+  - .env.example 은 공동 계약에서 이미 VAULT_MASTER_KEY 포함 → 추가 수정 없음.
+  - 다음 단계: B3 `POST /api/credentials` + `…/credential-input` REST + CredentialForm.tsx 본문.

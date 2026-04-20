@@ -189,7 +189,7 @@ git commit -m "feat(db): add submissions and credentials tables"
 - Modify: `.env.example`, `src/server/config.ts` (`VAULT_MASTER_KEY` 로딩)
 - Test: `tests/vault.test.ts`
 
-- [ ] **Step 2.1: 실패하는 벌트 라운드트립 테스트**
+- [x] **Step 2.1: 실패하는 벌트 라운드트립 테스트**
 
 ```typescript
 // tests/vault.test.ts
@@ -234,11 +234,11 @@ describe('CredentialVault', () => {
 });
 ```
 
-- [ ] **Step 2.2: 테스트 실행 → FAIL (모듈 없음)**
+- [x] **Step 2.2: 테스트 실행 → FAIL (모듈 없음)**
 
 Run: `npx vitest run tests/vault.test.ts`
 
-- [ ] **Step 2.3: `src/server/vault/crypto.ts` 작성**
+- [x] **Step 2.3: `src/server/vault/crypto.ts` 작성**
 
 ```typescript
 import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
@@ -260,7 +260,7 @@ export function decrypt(key: Buffer, ciphertext: Buffer, iv: Buffer, authTag: Bu
 }
 ```
 
-- [ ] **Step 2.4: `src/server/vault/types.ts`**
+- [x] **Step 2.4: `src/server/vault/types.ts`**
 
 ```typescript
 export interface ErpCredential {
@@ -269,7 +269,7 @@ export interface ErpCredential {
 }
 ```
 
-- [ ] **Step 2.5: `src/server/vault/vault.ts`**
+- [x] **Step 2.5: `src/server/vault/vault.ts`**
 
 ```typescript
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
@@ -303,7 +303,7 @@ export class CredentialVault {
 }
 ```
 
-- [ ] **Step 2.6: `.env.example` + `config.ts` 갱신**
+- [x] **Step 2.6: `.env.example` + `config.ts` 갱신**
 
 ```
 # .env.example 추가
@@ -315,7 +315,7 @@ ERP_COMPANY_CODE=meissa
 
 `src/server/config.ts` 에 `vaultKey: Buffer.from(process.env.VAULT_MASTER_KEY!, 'hex')` 추가.
 
-- [ ] **Step 2.7: 테스트 PASS 확인 + 커밋**
+- [x] **Step 2.7: 테스트 PASS 확인 + 커밋**
 
 ```bash
 npx vitest run tests/vault.test.ts
