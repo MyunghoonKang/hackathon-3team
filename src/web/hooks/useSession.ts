@@ -4,8 +4,11 @@ import { SOCKET_EVENT_ROOM_STATE, type RoomStatePayload } from '../../shared/pro
 
 // 이전 run 의 치명 버그 (HomePage→RoomPage navigate 직후 session 이 null 로 증발) 방지 —
 // session · me 는 컴포넌트 state 가 아니라 모듈 레벨 store 에 둔다.
+// _me 는 localStorage 에도 백업 — 새로고침/서버 재시작 후 재연결 시 복원.
+const ME_KEY = 'hackathon_me';
+const ROOM_KEY = 'hackathon_room';
 let _session: RoomStatePayload | null = null;
-let _me: string | null = null;
+let _me: string | null = localStorage.getItem(ME_KEY);
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -30,6 +33,8 @@ function replaceSession(next: RoomStatePayload | null) {
 }
 function replaceMe(next: string | null) {
   _me = next;
+  if (next) localStorage.setItem(ME_KEY, next);
+  else localStorage.removeItem(ME_KEY);
   emit();
 }
 
@@ -42,6 +47,17 @@ function toPayload(raw: unknown): RoomStatePayload | null {
   return { ...(r as RoomStatePayload), sessionId };
 }
 
+function tryRejoin() {
+  const roomCode = localStorage.getItem(ROOM_KEY);
+  const playerId = _me;
+  if (!roomCode || !playerId) return;
+  socket.emit('session:rejoin', { roomCode, playerId }, (ack: { error?: string; session?: unknown; playerId?: string }) => {
+    if (ack?.error || !ack?.session) return;
+    const snap = toPayload(ack.session);
+    if (snap) { replaceSession(snap); replaceMe(ack.playerId ?? playerId); }
+  });
+}
+
 let wired = false;
 function ensureWired() {
   if (wired) return;
@@ -50,7 +66,14 @@ function ensureWired() {
     const snap = toPayload(raw);
     if (snap) replaceSession(snap);
   });
-  if (!socket.connected) socket.connect();
+  socket.on('connect', () => {
+    if (!_session) tryRejoin();
+  });
+  if (socket.connected) {
+    if (!_session) tryRejoin();
+  } else {
+    socket.connect();
+  }
 }
 
 export interface CreateAck {
@@ -78,6 +101,7 @@ export function useSession() {
         if (ack?.error || !snap) return reject(new Error(ack?.error ?? 'create failed'));
         replaceSession(snap);
         replaceMe(snap.hostId);
+        localStorage.setItem(ROOM_KEY, snap.roomCode);
         resolve(snap);
       });
     });
@@ -92,6 +116,7 @@ export function useSession() {
             return reject(new Error(ack?.error ?? 'join failed'));
           replaceSession(snap);
           replaceMe(ack.playerId);
+          localStorage.setItem(ROOM_KEY, snap.roomCode);
           resolve({ snap, playerId: ack.playerId });
         });
       });

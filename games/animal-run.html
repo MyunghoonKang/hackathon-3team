@@ -296,6 +296,7 @@ GameSDK.on('init', ({ players, seed }) => {
   playerCount = players.length;
   rand = GameSDK.prng(seed);
   document.getElementById('waitingMsg').textContent = `${players.length}명 준비 완료 — 호스트 시작 대기 중…`;
+  window.parent.postMessage({ type: 'ready' }, '*');
 });
 
 GameSDK.on('start', () => {

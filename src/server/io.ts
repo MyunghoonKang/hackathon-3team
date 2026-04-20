@@ -41,6 +41,19 @@ export function attachIo(io: IOServer, ctx: Ctx): void {
       ack?.({ ok: true, session: snap });
     });
 
+    socket.on('session:rejoin', (raw, ack) => {
+      const { roomCode, playerId } = (raw ?? {}) as { roomCode?: string; playerId?: string };
+      if (!roomCode || !playerId) return ack?.({ error: 'invalid' });
+      const snap = ctx.mgr.getByRoomCode(roomCode);
+      if (!snap) return ack?.({ error: 'session not found' });
+      const player = snap.players.find(p => p.id === playerId);
+      if (!player) return ack?.({ error: 'player not found' });
+      socketMeta.set(socket, { sessionId: snap.sessionId, playerId });
+      socket.join(snap.sessionId);
+      ack?.({ ok: true, session: snap, playerId });
+      socket.emit(SOCKET_EVENT_ROOM_STATE, snap);
+    });
+
     socket.on('session:join', (raw, ack) => {
       const parsed = SocketJoin.safeParse(raw);
       if (!parsed.success) return ack?.({ error: 'invalid' });
