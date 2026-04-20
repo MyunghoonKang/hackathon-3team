@@ -121,3 +121,5 @@
   - transitionStatus(RUNNING, { workerStep:'login' }) broadcast 는 worker 가 직접 수행하지 않음 — 4A/3A 의 SessionManager singleton 이 확정되어야 함. B8 머지 시점에 worker 가 step 콜백을 받는 시그니처를 재검토 필요.
   - `npm i --save-dev playwright` + `npx playwright install chromium` 실행 완료. `npm test` 26/26 통과 · `npm run typecheck` 깨끗.
   - 다음 단계: B8 카드매칭 — `src/server/worker/{matcher,cardModal,navigate}.ts` + `tests/matcher.test.ts`. plan §Task 8 참조. 브랜치 `feat/b-worker-login`.
+
+[3A] Task A4 완료 — roomCode 생성기 (32^4 alphabet, crypto.randomInt, 재시도 50회)
