@@ -128,12 +128,13 @@ export class SessionManager {
   // ---------------------------------------------------------------------
 
   getById(sessionId: string): UnifiedSnap | null {
-    return this.snaps.get(sessionId) ?? null;
+    const s = this.snaps.get(sessionId);
+    return s ? { ...s } : null;
   }
 
   getByRoomCode(roomCode: string): UnifiedSnap | null {
     const id = this.byRoomCode.get(roomCode);
-    return id ? (this.snaps.get(id) ?? null) : null;
+    return id ? this.getById(id) : null;
   }
 
   // ---------------------------------------------------------------------
@@ -216,9 +217,13 @@ export class SessionManager {
   }
 
   join(input: JoinSessionInput): UnifiedSnap {
-    const snap = this.getByRoomCode(input.roomCode);
+    const id = this.byRoomCode.get(input.roomCode);
+    const snap = id ? this.snaps.get(id) : undefined;
     if (!snap) {
       throw new Error(`Session not found for room code ${input.roomCode}`);
+    }
+    if (snap.status !== 'PREPARING') {
+      throw new Error(`session already started (status=${snap.status}); not in PREPARING`);
     }
     const player: Player = {
       id: randomUUID(),

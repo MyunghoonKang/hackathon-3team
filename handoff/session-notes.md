@@ -176,3 +176,5 @@
   - tests/submission-hook.test.ts 6 케이스: 정상 전이+broadcast · io=null no-op · PREPARING 호출 → IllegalTransitionError · 미존재 sessionId → SessionNotFoundError · register 전 모듈 호출 = warn-only · register 후 모듈 호출 = 실 전이.
   - 검증: 신규 6/6 + submission-hook 외 4A 영역 회귀 없음. 전체 290/293 (실패 3은 4B worker-formfill budget lookup Playwright 타임아웃 — 본 태스크 무관, 기존 상태). typecheck: 4B `worker/matcher.ts:51` 1 에러는 본 태스크 직전 main 에서 동일 (4B 영역).
   - 다음 단계: B13 E2E mock 녹색 — 4B B10(결재상신) 머지 후 진입. RoomPage 5 case PR 도 3B RoomPage 골격(A10 머지됨) 위에 얹을 수 있는 시점.
+
+[3A] Task A5 follow-up — getById clone + join PREPARING guard (review fixes, +2 tests)

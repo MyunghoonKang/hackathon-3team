@@ -73,4 +73,22 @@ describe('SessionManager', () => {
     const a = mgr.createSession({ name: 'Alice' });
     expect(() => mgr.transitionStatus({ sessionId: a.id, to: 'COMPLETED' })).toThrow(/illegal transition/i);
   });
+
+  it('getById returns a clone; mutations do not affect internal state', () => {
+    const a = mgr.createSession({ name: 'Alice' });
+    const snap = mgr.getById(a.id);
+    expect(snap).toBeDefined();
+    (snap as any).status = 'ABORTED';
+    const fresh = mgr.getById(a.id);
+    expect(fresh?.status).toBe('PREPARING');
+  });
+
+  it('join rejects non-PREPARING sessions', () => {
+    const a = mgr.createSession({ name: 'Alice' });
+    mgr.join({ roomCode: a.roomCode, name: 'Bob' });
+    mgr.selectGame({ sessionId: a.id, actorId: a.hostId, gameId: 'g1' });
+    mgr.startGame({ sessionId: a.id, actorId: a.hostId });
+    expect(() => mgr.join({ roomCode: a.roomCode, name: 'Charlie' }))
+      .toThrow(/already started|not in PREPARING|status/i);
+  });
 });
