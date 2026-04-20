@@ -155,3 +155,16 @@
   - 테스트: tests/manager.test.ts 8/8 (plan verbatim), tests/manager.persist.test.ts 7/7 (실 insert/update 검증 + default persist=true 에서 db 없이 throw + persist=false 에서 DB 미기록). 전체 77 pass / 3 skip / 1 fail(=worker-login, playwright chromium 미설치 — 본 태스크 무관). typecheck 깨끗.
   - 다음 단계: 3A A6 GameRegistry. B11 라우트는 새 SessionManager 로 그대로 동작.
 [4B] 2026-04-20 — Task B8 완료 — cardModal 모듈(matcher.ts·cardModal.ts·matcher.test.ts) 본체는 이전 PR(#1, 5cfd143)에서 머지됨. 이 세션은 마무리 작업: src/server/worker/index.ts 에 cardModal/matcher re-export 추가(login·fillForm 패턴 일치) + dev4.md DoD [x] B8·matcher/worker-mock 단위 테스트 녹색 갱신. 검증: matcher 7/7, worker-mock 13/13 pass. 중복 승인번호 정책은 matcher 의 `excludeSunginNbs` 로 멱등성 가드(이미 상신된 sunginNb 재선택 차단) — 4A 의 SubmissionQueue 가 prior submissions 의 erpRefNo→sunginNb 를 옵션으로 주입할 위치를 orchestration 단계에서 결정. workerStep='cardModal' transitionStatus 호출은 runSubmission orchestration(별도 PR) 에서 cardModal 진입 시 호출 예정.
+
+[3B] 2026-04-20 — Task A10 완료 — HomePage · useSession(module-level store) · RoomPage 스텁 · 라우팅.
+  - 병렬 진행: 3A 세션이 `hackathon-3team/` 에서 A5→A6, 이쪽(3B)은 `hackathon-3team-3b/` 워크트리. server/web 소유권 분리라 파일 충돌 無.
+  - src/web/socket.ts: `io({ autoConnect: false })`. A9(server session handler) 머지 전까지 emit ack 미도달 — hang 정상. A9 머지 후 자동 동작.
+  - src/web/hooks/useSession.ts: **모듈 레벨 store + useSyncExternalStore 구독** — 이전 run 의 "HomePage→RoomPage navigate 후 session null" 버그 정면 대응 (DoD §10 lessons). 컴포넌트 local useState 금지.
+  - toPayload(raw): 서버 ack 응답의 `id`↔`sessionId` 키명 drift 방어 + 필수 필드 런타임 검증. 풀 zod 스키마는 protocol.ts 수정 리스크라 보류.
+  - src/web/pages/HomePage.tsx: 이름·룸코드 입력 · 방 만들기/참여 · 성공 시 /room/:code nav · 에러 토스트 · busy 가드.
+  - src/web/pages/RoomPage.tsx: 스텁. useSession 구독 → 참가자 요약. LobbyView/GameView/ResultView 스왑은 A11~A13.
+  - src/web/App.tsx: `/` HomePage, `/room/:code` RoomPage, `*` 404. main.tsx 의 BrowserRouter 유지.
+  - src/web/styles.css: HomePage/RoomPage 스타일 append only. 공동 계약 디자인 토큰 손 안 댐.
+  - 의존성: socket.io-client 추가 (npm i). package.json/package-lock.json 변경.
+  - 검증: `tsc -p tsconfig.web.json --noEmit` 0 error. server 쪽 `matcher.ts(51,10)` 에러는 4B 소유 · 본 태스크 무관. 수동 2탭 검증은 A9 머지 후 재실행 예정.
+  - 다음 단계: 3B A11 LobbyView · A12 GameView. A9 머지 알림 수신 시 재연결 시나리오 확인.
