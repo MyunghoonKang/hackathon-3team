@@ -38,6 +38,15 @@ export function CredentialForm({ sessionId, loserId }: CredentialFormProps) {
         throw new Error(`자격증명 저장 실패 (${saveRes.status}): ${text}`);
       }
 
+      // FINISHED → CREDENTIAL_INPUT 전이를 선제 호출해야 이후 submissions(→QUEUED)가 통과한다.
+      const transition = await fetch(`/api/sessions/${sessionId}/credential-input`, {
+        method: 'POST',
+      });
+      if (!transition.ok && transition.status !== 409) {
+        const text = await transition.text();
+        throw new Error(`상태 전이 실패 (${transition.status}): ${text}`);
+      }
+
       const enqueue = await fetch(`/api/sessions/${sessionId}/submissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

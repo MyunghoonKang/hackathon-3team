@@ -40,6 +40,12 @@ export async function openApprovalAndInject(
     return { popup, submittedAt: null };
   }
 
+  // live 모드 최종 안전핀 — Playwright Inspector 로 일시정지. 사용자가 화면을
+  // 직접 확인한 뒤 Resume 을 눌러야만 실제 [상신] 클릭이 실행된다. mock 은 skip.
+  if (input.mode === 'live') {
+    await popup.pause();
+  }
+
   await popup.locator('button', { hasText: /^상신$/ }).click();
   // ERP 확인 dialog — dryrun 에서는 절대 호출되지 않음 (submitFinal=false).
   // live 에서만 accept.
