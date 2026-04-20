@@ -36,5 +36,8 @@ export { launchBrowser } from './browser';
 export type { BrowserSession } from './browser';
 export { login, loginUrlFor, LoginError, mockLoginUrl } from './login';
 export type { LoginOptions } from './login';
+export { openCardModal, selectCardRow, NoMatchError } from './cardModal';
+export { matchCardRow } from './matcher';
+export type { CardRow, MatchCriteria } from './matcher';
 export { fillForm, defaultTitle, FormFillError } from './formFill';
 export type { FillInput, PurposeKind } from './formFill';
