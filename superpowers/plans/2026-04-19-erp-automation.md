@@ -666,7 +666,7 @@ git commit -m "feat(submissions): add state-machine queue with recovery"
 - Modify: `package.json` (`date-fns-tz`, `node-cron`), `src/server/index.ts` (Scheduler start)
 - Test: `tests/scheduling.test.ts`
 
-- [ ] **Step 5.1: 실패하는 스케줄 계산 테스트**
+- [x] **Step 5.1: 실패하는 스케줄 계산 테스트**
 
 ```typescript
 // tests/scheduling.test.ts
@@ -701,7 +701,7 @@ describe('nextBusinessDayNineAm (Asia/Seoul)', () => {
 
 Run: `npx vitest run tests/scheduling.test.ts` → FAIL
 
-- [ ] **Step 5.2: `src/server/submissions/scheduling.ts`**
+- [x] **Step 5.2: `src/server/submissions/scheduling.ts`**
 
 ```typescript
 import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
@@ -719,11 +719,11 @@ export function nextBusinessDayNineAm(now: Date = new Date()): Date {
 }
 ```
 
-- [ ] **Step 5.3: 테스트 PASS 확인**
+- [x] **Step 5.3: 테스트 PASS 확인**
 
 Run: `npx vitest run tests/scheduling.test.ts` → PASS
 
-- [ ] **Step 5.4: `src/server/submissions/scheduler.ts`**
+- [x] **Step 5.4: `src/server/submissions/scheduler.ts`**
 
 ```typescript
 import cron from 'node-cron';
@@ -760,7 +760,7 @@ export class Scheduler {
 }
 ```
 
-- [ ] **Step 5.5: `src/server/index.ts` 에서 Scheduler 기동**
+- [x] **Step 5.5: `src/server/index.ts` 에서 Scheduler 기동**
 
 ```typescript
 import { Scheduler } from './submissions/scheduler';
@@ -769,7 +769,7 @@ const scheduler = new Scheduler({ queue, runSubmission: (id) => runSubmission(id
 scheduler.start();
 ```
 
-- [ ] **Step 5.6: 커밋**
+- [x] **Step 5.6: 커밋**
 
 ```bash
 git add src/server/submissions tests/scheduling.test.ts src/server/index.ts package.json

@@ -102,3 +102,12 @@
   - 큐 자체는 broadcast 안 함. 호출자(Scheduler/B11/workerHook)가 transitionStatus + broadcastRoomState 로 RoomStatePayload(submissionId · scheduledAt · workerStep · erpRefNo · errorLog) 전파 책임.
   - 테스트(tests/queue.test.ts) 11 케이스: enqueue · claim QUEUED→RUNNING + attempts++ · idempotent claim · 미래 scheduledAt skip · 가장 오래된 due 우선 · complete · fail · updateWorkerStep · recoverStuck stuck reset · recoverStuck recent untouched · loadForRun.
   - 다음 단계: B5 Scheduler (분당 polling + nextBusinessDayNineAm Asia/Seoul) · runSubmission 호출.
+
+[4A] 2026-04-20 — Task B5 완료 — Scheduler (분당 · 다음 영업일 09:00 KST) + scheduling.ts (7 tests pass).
+  - src/server/submissions/{scheduling,scheduler}.ts 신설. node-cron 3.0.3 · date-fns-tz 2.0.1 · date-fns 2.30.0 추가.
+  - nextBusinessDayNineAm(now): utcToZonedTime(TZ=Asia/Seoul) → 오늘 09:00 set → 지났으면 +1d → 주말 skip → zonedTimeToUtc. 스펙의 4 케이스 (평일밤/금요일/토요일/평일 08시) 모두 통과.
+  - Scheduler.tick(): recoverStuck(기본 threshold 30min) → claimNext(now) → runSubmission fire-and-forget. start() 는 cron '* * * * *' 등록, stop() 은 취소. broadcast 는 워커 몫이라 여기선 안 건드림.
+  - src/server/index.ts: buildApp 반환 db 위에 SubmissionQueue · Scheduler 기동. runSubmission 은 4B 워커가 아직 없을 수 있으므로 dynamic `import('./worker/index.js')` 로 로드 → 실패·부재 시 no-op placeholder (서버는 계속 뜸).
+  - 테스트 추가: tests/scheduling.test.ts 에 Scheduler.tick 3 케이스 (due 1건 dispatch · 없을 때 skip · stuck recovery 후 재dispatch).
+  - 전체 typecheck/테스트 grn (77 pass, 9 files). npm 취약점 4건(moderate) — 데모 후 정리 대상, 여기선 건드리지 않음.
+  - 다음 단계: B11 `POST /api/sessions/:id/submissions` + `/run-now` + ResultView QUEUED/RUNNING/COMPLETED/FAILED 본문. B11 은 3B RoomPage 안정(H+14 이후) 뒤에 합치는 게 플랜.
