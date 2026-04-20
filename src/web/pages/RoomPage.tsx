@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useSession } from '../hooks/useSession';
 import { LobbyView } from '../components/LobbyView';
 import { ResultView } from '../components/ResultView';
+import { GameView } from '../components/GameView';
 
 export default function RoomPage() {
   const { code } = useParams();
@@ -57,6 +58,15 @@ export default function RoomPage() {
     );
   }
 
+  // PLAYING — GameView (A12)
+  if (status === 'PLAYING' && me) {
+    return (
+      <main className="room">
+        <GameView snap={session} me={me} />
+      </main>
+    );
+  }
+
   // PREPARING — LobbyView (A11). me 없으면 fallthrough.
   if (status === 'PREPARING' && me) {
     return (
@@ -66,7 +76,7 @@ export default function RoomPage() {
     );
   }
 
-  // PLAYING / 기타 — A12(GameView) 머지 전 임시 플레이어 목록
+  // fallback
   return (
     <main className="room">
       <header className="room__header">
