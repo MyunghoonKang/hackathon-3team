@@ -185,6 +185,14 @@
   - A9: attachIo (session:create/join/game:select/game:start/player:submit/disconnect) + sessionsRouter(GET /api/sessions/:code) + protocol.ts Socket 이벤트 스키마 5종. game:start 사전 검증(PLAYING 고착 방지) + disconnect 시 runner cleanup.
   - 다음 단계: A16 데모 리허설 체크리스트 (H+22 이후).
 
+[4A] 2026-04-20 — Task B13 완료 — E2E mock 녹색 (PREPARING→PLAYING→FINISHED→CREDENTIAL_INPUT→QUEUED→RUNNING→COMPLETED 풀 플로우 1회 성공).
+  - tests/e2e-mock.test.ts 신설. buildApp + 실 Playwright(headless chromium) + mock HTML 3종을 그대로 사용. mgr.createSession/join/selectGame/startGame/finishGame 로 게임 라이프사이클 → POST /api/credentials → /credential-input → /submissions → setWorkerDeps → /run-now → polling until COMPLETED. 단일 테스트, timeout 120s (실측 ~2.1s).
+  - 발견 버그 2종 픽스:
+    1. **4B** `src/server/worker/orchestrator.ts` mockCardUrl — base64 의 `+` 가 URLSearchParams.get() 에서 공백으로 치환되어 브라우저 atob() 가 InvalidCharacterError 로 실패 → card.html 행 렌더 timeout. encodeURIComponent 로 감싸 `%2B` 전송 → 해결.
+    2. **4A** `src/server/submissions/queue.ts` + `src/server/routes/submissions.ts` — /run-now 가 mgr 전이(QUEUED→RUNNING) 만 하고 queue 행을 claim 하지 않아, 이후 queue.updateWorkerStep / queue.complete 의 `WHERE status='RUNNING'` 가드가 전부 no-op 이 되고 queue 행이 QUEUED 에 고착. `SubmissionQueue.claim(id, now)` 메서드 추가 + /run-now 에서 mgr 전이 직후 호출. 이후 finalizeSuccess 에서 queue.complete 가 정상 반영.
+  - 검증: tests/e2e-mock.test.ts 1/1 green. 전체 스위트 41 파일 pass + 2 파일 pre-existing fail (`.claude/worktrees/session-4b-B8/tests/vault.test.ts` 은 구 worktree, `tests/worker-formfill.test.ts` 의 budget lookup 타임아웃은 4B 기존 이슈). 내 변경으로 인한 회귀 없음.
+  - 다음 단계: 4A DoD 는 RoomPage 5 case PR 항목이 남아있으나 session-notes integrator 주석(c401055) 에 의하면 3B 의 default→ResultView 패턴으로 9 status 전부 커버되어 별도 PR 불필요. 따라서 4A 트랙은 사실상 완료. 4B 의 B14 실 ERP 라이브 리허설만 남음 (H+22 이후, 사용자 동석).
+
 [3B] 2026-04-20 — Task A11 완료 — PlayerList · GameSelector · LobbyView + RoomPage PREPARING 연결.
   - 계속 `hackathon-3team-3b/` 워크트리에서 3B 트랙 병렬 진행. 이 커밋 작성 중 main 은 `c0ee1b9` (3A A5 follow-up) 까지 전진 — 내 워크트리 server/tests/handoff 는 `git checkout HEAD -- ...` 로 재동기화, src/web 영역만 추가.
   - src/web/components/PlayerList.tsx: `players` · `hostId` · `loserId?` · `highlightMe?`. 접속끊김(connected=false) · 패자 · 본인 강조 클래스 3종. FINISHED 단계에서 ResultView 가 재사용할 수 있도록 loserId prop 미리 공개.

@@ -131,6 +131,12 @@ export function submissionsRouter(deps: SubmissionsRouterDeps): Router {
       return;
     }
 
+    // queue 행도 RUNNING 으로 claim — 그래야 이후 워커의 queue.updateWorkerStep /
+    // queue.complete / queue.fail 이 `WHERE status='RUNNING'` 가드를 통과한다.
+    // Scheduler 경로는 claimNext() 가 이 역할을 하지만 /run-now 는 별도 경로라
+    // 여기서 명시적으로 한 번 더 호출해야 mgr 과 queue 의 상태가 정합해진다.
+    deps.queue.claim(row.id, now());
+
     // fire-and-forget (Lessons §Task 11 DoD 준수: { ok: true } 스텁만 반환 금지).
     deps.runSubmission(row.id).catch((err) => {
       // eslint-disable-next-line no-console

@@ -49,7 +49,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function mockCardUrl(rows: unknown[]): string {
   const base = pathToFileURL(join(__dirname, 'mock', 'card.html')).toString();
-  const encoded = Buffer.from(JSON.stringify(rows), 'utf-8').toString('base64');
+  // base64 에 포함되는 `+` 는 URLSearchParams.get() 해석 시 공백으로 치환되어
+  // 브라우저 쪽 atob() 가 InvalidCharacterError 로 실패한다. encodeURIComponent
+  // 로 감싸 `%2B` 로 전송 → card.html 의 url.searchParams.get() 가 원본 base64
+  // 를 복원하도록 보장한다.
+  const encoded = encodeURIComponent(
+    Buffer.from(JSON.stringify(rows), 'utf-8').toString('base64'),
+  );
   return `${base}?rows=${encoded}`;
 }
 

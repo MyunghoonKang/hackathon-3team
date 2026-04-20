@@ -47,6 +47,34 @@ export class SubmissionQueue {
     return id;
   }
 
+  // /run-now 전용 — 특정 submissionId 를 QUEUED → RUNNING 으로 직접 claim.
+  // Scheduler 경로는 claimNext() 가 오래된 due row 를 뽑아 동일한 전이를 수행한다.
+  // 이 메서드는 scheduledAt 가드를 무시(데모 수동 override).
+  //
+  // RUNNING 이 아니면 false 를 반환 — 이미 다른 워커가 claim 했거나 terminal 상태.
+  claim(id: string, now: Date = new Date()): boolean {
+    const row = this.db
+      .select({ attempts: schema.submissions.attempts, status: schema.submissions.status })
+      .from(schema.submissions)
+      .where(eq(schema.submissions.id, id))
+      .get();
+    if (!row || row.status !== 'QUEUED') return false;
+
+    const updated = this.db
+      .update(schema.submissions)
+      .set({
+        status: 'RUNNING',
+        attempts: row.attempts + 1,
+        workerStep: null,
+        errorLog: null,
+        updatedAt: now,
+      })
+      .where(and(eq(schema.submissions.id, id), eq(schema.submissions.status, 'QUEUED')))
+      .returning({ id: schema.submissions.id })
+      .all();
+    return updated.length > 0;
+  }
+
   claimNext(now: Date): ClaimedSubmission | null {
     const candidate = this.db
       .select({ id: schema.submissions.id, attempts: schema.submissions.attempts })
