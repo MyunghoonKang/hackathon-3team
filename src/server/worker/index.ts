@@ -15,13 +15,14 @@ export async function runSubmission(submissionId: string): Promise<WorkerResult>
   // 스크린샷 디렉터리는 mock 모드에서도 만든다. 데모 후 로그와 대조할 때 경로가 필요.
   makeScreenshotDir(submissionId);
 
-  // B6 스캐폴딩 단계 · B7~B10 에서 login/cardModal/formFill/approval 각 단계를
-  // 순차 구현하며 아래 분기를 실제 Playwright 흐름으로 교체한다.
-  // 4A 는 이미 이 함수를 await 으로 받아 COMPLETED/FAILED 를 broadcast 하므로,
-  // stub 이 안전하게 FAILED 를 반환하면 E2E mock (B13) 도 'FAILED 테스트 통로' 로 동작.
+  // B7 에서 login 모듈(login · loginUrlFor · LoginError) 을 export. 4A 는 Scheduler(B5)
+  // · /run-now(B11) 에서 submissionId → sessionId lookup → CredentialVault.load 후
+  // launchBrowser + login() 을 직접 orchestrate 한다 (dev4.md 계약: deps 주입 불가 ·
+  // 이 파일 내부에서 SessionManager/SubmissionQueue singleton 을 import 하는 패턴은
+  // 4A 가 B4 머지 시점에 결정). 그 orchestration 이 붙기 전까지는 스텁 FAILED 유지.
   return {
     status: 'FAILED',
-    errorLog: `worker stub (mode=${mode}) — B7~B10 (login · cardModal · formFill · approval) 미구현`,
+    errorLog: `worker stub (mode=${mode}) — B8~B10 (cardModal · formFill · approval) · runSubmission orchestration 미구현. login() 은 별도 export.`,
   };
 }
 
@@ -31,3 +32,7 @@ export const WORKER_STEP_ORDER: readonly WorkerStep[] = ['login', 'cardModal', '
 
 export { resolveMode } from './mode';
 export type { WorkerMode } from './mode';
+export { launchBrowser } from './browser';
+export type { BrowserSession } from './browser';
+export { login, loginUrlFor, LoginError, mockLoginUrl } from './login';
+export type { LoginOptions } from './login';

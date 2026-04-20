@@ -953,7 +953,7 @@ git commit -m "feat(worker): scaffold + mock HTML + mode toggle (live/mock/dryru
 - Modify: `src/server/worker/index.ts` (호출)
 - Test: `tests/worker-login.test.ts` (목업 HTML 대상)
 
-- [ ] **Step 7.1: 실패하는 로그인 테스트 (목업 기반)**
+- [x] **Step 7.1: 실패하는 로그인 테스트 (목업 기반)**
 
 ```typescript
 // tests/worker-login.test.ts
@@ -981,7 +981,7 @@ describe('login (mock)', () => {
 
 Run: `npx vitest run tests/worker-login.test.ts` → FAIL
 
-- [ ] **Step 7.2: `src/server/worker/login.ts`**
+- [x] **Step 7.2: `src/server/worker/login.ts`**
 
 ```typescript
 import type { Page } from 'playwright';
@@ -1018,7 +1018,7 @@ export async function login(page: Page, cred: ErpCredential, opts: LoginOptions)
 export class LoginError extends Error {}
 ```
 
-- [ ] **Step 7.3: `worker/index.ts` 에서 로그인 호출**
+- [ ] **Step 7.3: `worker/index.ts` 에서 로그인 호출** — B4(SubmissionQueue) · B11(/run-now) · 3A SessionManager 가 붙은 뒤 orchestration 교체. B7 에서는 login · loginUrlFor · launchBrowser 만 `worker/index.ts` 에서 re-export (deps 주입형 패턴이 dev4.md 계약상 허용되지 않음).
 
 ```typescript
 // 기존 stub을 아래로 교체
@@ -1035,7 +1035,7 @@ try {
 
 `loginUrlFor`: `mode==='mock' ? file://.../mock/erp-login.html : 'https://erp.meissa.ai/#/login'`.
 
-- [ ] **Step 7.4: 테스트 PASS + 커밋**
+- [x] **Step 7.4: 테스트 PASS + 커밋**
 
 ```bash
 npx vitest run tests/worker-login.test.ts

@@ -84,3 +84,11 @@
   - 다음 단계: B3 `POST /api/credentials` + `…/credential-input` REST + CredentialForm.tsx 본문.
 
 [4B] Task B6 완료 — `src/server/worker/{index,mode,browser,screenshots}.ts` + `mock/{login,card,form}.html` + `mock/seed.ts` + `tests/worker-mock.test.ts` + `tests/fixtures/cardRows.json`. `runSubmission(submissionId): Promise<WorkerResult>` 시그니처 고정(dev4.md 계약 기준 · plan 의 deps 주입형 `(id, deps): Promise<void>` 스텁이 아님에 주의) · 현재는 FAILED+errorLog 반환 스텁이라 4A Scheduler(B5)/run-now(B11) 가 지금부터 import + 호출 가능. browser.ts 는 playwright 를 dynamic import 해 package.json 확정 전에도 파일 파싱 가능. `npm i playwright` / `npx playwright install chromium` 은 3A A1 완료 후 실행 필요 (worker-mock.test.ts 도 그 전까지는 미실행). 브랜치 `worktree-session-4b`.
+
+[4B] 2026-04-20 — Task B7 완료 — ERP 2단계 로그인 모듈(`src/server/worker/login.ts`) + integration 테스트(`tests/worker-login.test.ts`) 녹색 (6 tests pass).
+  - `login(page, cred, opts)`: `goto` → companyCode 검증 → `#userId` fill → [다음] → password 필드 visible 대기 → fill → [로그인] → URL 변경 대기. 실패 시 `LoginError` throw.
+  - `loginUrlFor(mode, erpBaseUrl?)`: mock → `file://.../worker/mock/login.html` · dryrun/live → `${erpBaseUrl}/#/login`. erpBaseUrl 기본값 `https://erp.meissa.ai`.
+  - `worker/index.ts` 는 login · loginUrlFor · launchBrowser · LoginError 를 re-export 만 수행. runSubmission orchestration(submissionId → sessions → credentials 로 cred 조회 + launchBrowser + login 호출)은 4A 의 B4(SubmissionQueue)/B11(/run-now) + 3A SessionManager 가 붙은 뒤 추가. plan Step 7.3 의 `deps` 주입형 패턴은 dev4.md 계약상 허용 안 됨 → 4A 가 Scheduler/run-now 에서 worker/index.ts 의 login·launchBrowser 를 직접 import 해 조립하는 방식 권장.
+  - transitionStatus(RUNNING, { workerStep:'login' }) broadcast 는 worker 가 직접 수행하지 않음 — 4A/3A 의 SessionManager singleton 이 확정되어야 함. B8 머지 시점에 worker 가 step 콜백을 받는 시그니처를 재검토 필요.
+  - `npm i --save-dev playwright` + `npx playwright install chromium` 실행 완료. `npm test` 26/26 통과 · `npm run typecheck` 깨끗.
+  - 다음 단계: B8 카드매칭 — `src/server/worker/{matcher,cardModal,navigate}.ts` + `tests/matcher.test.ts`. plan §Task 8 참조. 브랜치 `feat/b-worker-login`.

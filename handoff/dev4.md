@@ -177,7 +177,7 @@ Task B1 부터 시작.
 ### DoD (H+22 기준, 스펙 §4.4 verbatim)
 
 - [x] B6 워커 스캐폴딩 + 목업 HTML 3종 + `WORKER_MODE` 토글
-- [ ] B7 로그인 · B8 카드매칭 · B9 폼채움 · B10 결재상신 (각 단계 시작 시 `transitionStatus(RUNNING, { workerStep })` 호출 → 4A broadcast)
+- [x] B7 로그인 (목업 HTML 기반 Playwright integration 테스트 녹색) · [ ] B8 카드매칭 · [ ] B9 폼채움 · [ ] B10 결재상신 (각 단계 시작 시 `transitionStatus(RUNNING, { workerStep })` 호출 → 4A broadcast)
 - [ ] `runSubmission(submissionId: string): Promise<WorkerResult>` export (4A 가 import)
 - [ ] 단위 테스트 (`matcher.test.ts` · `worker-mock.test.ts`) 녹색
 - [ ] B14 실 ERP 라이브 리허설: 사용자 동석, 폼 채움까지 OK, `[상신]` 은 데모 당일 `ERP_CONFIRM_SUBMIT=1` + 수동 확인 후
