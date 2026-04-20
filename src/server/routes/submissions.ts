@@ -131,6 +131,9 @@ export function submissionsRouter(deps: SubmissionsRouterDeps): Router {
       return;
     }
 
+    // queue DB row 도 RUNNING 으로 전이 (claimNext 대신 run-now 전용 경로).
+    deps.queue.claimById(row.id);
+
     // fire-and-forget (Lessons §Task 11 DoD 준수: { ok: true } 스텁만 반환 금지).
     deps.runSubmission(row.id).catch((err) => {
       // eslint-disable-next-line no-console

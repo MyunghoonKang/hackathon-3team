@@ -191,3 +191,10 @@
 
 [3B] 2026-04-20 — Task A12 완료 — useGameFrame hook + GameFrame iframe bridge + GameView(game:begin socket + snap.game fallback) + RoomPage PLAYING case 추가.
 [3B] 2026-04-20 — Task A13 완료 — ResultView FINISHED에 패자이름+결과리스트, QUEUED에 run-now 데모버튼 추가. (StatusBadge/CredentialForm/RoomPage는 이미 완성 상태였음)
+
+[4A] 2026-04-20 — Task B13 완료 — E2E mock 3/3 녹색 (run-now · Scheduler.tick · FAILED 분기).
+  - tests/e2e-mock.test.ts 신설: FINISHED→CREDENTIAL_INPUT→QUEUED→RUNNING→COMPLETED 전체 플로우 검증.
+  - run-now 경로(주 데모 경로) + Scheduler.tick 자동 경로 + FAILED 분기 3케이스 커버.
+  - 버그 픽스: `run-now` 엔드포인트가 SessionManager만 RUNNING 전이하고 submissions DB row는 QUEUED 그대로 남겨 `queue.complete()`/`queue.fail()`이 no-op이 되는 문제 → `SubmissionQueue.claimById(id)` 신설 + run-now 엔드포인트에서 호출.
+  - 전체 312/313 pass (실패 1은 4B worker-formfill Playwright 타임아웃 — 기존 상태 · 본 태스크 무관).
+  - 남은 작업: B14 실 ERP 라이브 리허설 (사용자 본인 동석 필요).
