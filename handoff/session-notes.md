@@ -114,6 +114,23 @@
 
 [4B] Task B6 완료 — `src/server/worker/{index,mode,browser,screenshots}.ts` + `mock/{login,card,form}.html` + `mock/seed.ts` + `tests/worker-mock.test.ts` + `tests/fixtures/cardRows.json`. `runSubmission(submissionId): Promise<WorkerResult>` 시그니처 고정(dev4.md 계약 기준 · plan 의 deps 주입형 `(id, deps): Promise<void>` 스텁이 아님에 주의) · 현재는 FAILED+errorLog 반환 스텁이라 4A Scheduler(B5)/run-now(B11) 가 지금부터 import + 호출 가능. browser.ts 는 playwright 를 dynamic import 해 package.json 확정 전에도 파일 파싱 가능. `npm i playwright` / `npx playwright install chromium` 은 3A A1 완료 후 실행 필요 (worker-mock.test.ts 도 그 전까지는 미실행). 브랜치 `worktree-session-4b`.
 
+[4A] 2026-04-20 — Task B11 완료 — submissions REST 4종 + SessionManager stub + broadcastRoomState + ResultView 본문 (12 tests pass, total 151).
+  - `src/server/session/manager.ts` 신설 (3A 의 A5 미착수 대행 — 이전 run `persist` 누락 버그 흡수: register/transition 마다 sessions 테이블 upsert 보장). `transitionStatus` 가 `isAllowedTransition` 검증 → snap mutate → DB persist. 3A A5 머지 시 교체 대상.
+  - `src/server/io.ts` 신설 — `broadcastRoomState(io|null, snap)` 유틸 (io=null 이면 no-op → 테스트 호환). 모든 RoomStatus 전이 직후 호출.
+  - `src/server/routes/submissions.ts` 신설. 4 엔드포인트:
+      · `POST /api/sessions/:id/credential-input` → 204 (FINISHED→CREDENTIAL_INPUT + broadcast)
+      · `POST /api/sessions/:id/submissions` → 200 `{submissionId, scheduledAt}` (CREDENTIAL_INPUT→QUEUED + broadcast) · sessions 테이블 `onConflictDoNothing` upsert 로 FK 이중 가드
+      · `POST /api/submissions/:id/run-now` → 202 (QUEUED→RUNNING + fire-and-forget `runSubmission(id)`) · mock 모드 or `X-Demo-Confirm: yes` header 필수 · Lessons §Task 11 DoD 준수 (`{ok:true}` 스텁만 반환 금지).
+      · `GET /api/submissions/:id` → 디버그.
+    에러: IllegalTransitionError→409 · SessionNotFoundError→404 · FK→409 session_not_found.
+  - `src/server/app.ts` buildApp 확장 — `io`/`workerMode`/`runSubmission`/`now` 주입 옵션 + `mgr`·`queue` 반환. `/api` 밑에 submissionsRouter mount.
+  - `src/server/index.ts` 재조립 — socket.io 를 buildApp 이전에 생성해 io 주입, Scheduler 는 queue 를 buildApp 결과에서 받음. worker `runSubmission` dynamic import 유지 (부재 시 no-op).
+  - `src/web/components/ResultView.tsx` 신설 — FINISHED/CREDENTIAL_INPUT/QUEUED/RUNNING/COMPLETED/FAILED 6 case (프롬프트의 Plan B 4단계 + FINISHED/CREDENTIAL_INPUT 까지 포함). ViewProps(snap/me) 고정. CredentialForm 은 FINISHED 및 CREDENTIAL_INPUT 에서 패자에게만 렌더. RUNNING 은 InlineSpinner+workerStep.
+  - 테스트(`tests/submissions-route.test.ts`) 12 케이스: credential-input 204/404/409 · submissions 200+enqueue/FK upsert gap/409 illegal · run-now mock 202+fire · live 422 gated · live with header 202+fire · 404 missing · GET /submissions/:id 200/404.
+  - 확인: `npm run typecheck` 깨끗 · `npm test` 151 pass (내부 B 트랙 12 신규). playwright 미설치 상태였어서 `npm install` 로 복구.
+  - 미완 / 이월: (1) worker 측 `transitionStatus(RUNNING→COMPLETED/FAILED)` 콜백은 4B B10 머지 시점에 붙음. 현재 run-now 는 RUNNING 까지만 전이, worker 가 종료 시 mgr 없이는 상태 못 바꿈. (2) `RoomPage` 5 case 추가 PR 은 3B RoomPage 골격 이후. (3) SessionManager 는 3A A5 본 구현으로 교체 필요.
+  - 다음 단계: B12 게임훅 (submissionHook.ts → GameRunner outcome) · 3A A8 머지 대기.
+
 [4B] 2026-04-20 — Task B7 완료 — ERP 2단계 로그인 모듈(`src/server/worker/login.ts`) + integration 테스트(`tests/worker-login.test.ts`) 녹색 (6 tests pass).
   - `login(page, cred, opts)`: `goto` → companyCode 검증 → `#userId` fill → [다음] → password 필드 visible 대기 → fill → [로그인] → URL 변경 대기. 실패 시 `LoginError` throw.
   - `loginUrlFor(mode, erpBaseUrl?)`: mock → `file://.../worker/mock/login.html` · dryrun/live → `${erpBaseUrl}/#/login`. erpBaseUrl 기본값 `https://erp.meissa.ai`.
