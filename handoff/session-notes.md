@@ -140,3 +140,5 @@
   - 다음 단계: B8 카드매칭 — `src/server/worker/{matcher,cardModal,navigate}.ts` + `tests/matcher.test.ts`. plan §Task 8 참조. 브랜치 `feat/b-worker-login`.
 
 [3A] Task A4 완료 — roomCode 생성기 (32^4 alphabet, crypto.randomInt, 재시도 50회)
+
+[4B] Task B8 완료 — `src/server/worker/matcher.ts` (순수 함수 `matchCardRow(rows, criteria)` · ERP Exploration §1 매칭 전략: cardCd + issDt + ±toleranceMinutes 안 가장 가까운 시각 + excludeSunginNbs 멱등성 가드) + `src/server/worker/cardModal.ts` (`openCardModal` · `selectCardRow` · `NoMatchError` · gridView 우선 + mock `<tbody#cardRows>` fallback 양쪽 지원) + `tests/matcher.test.ts` (7 케이스: cardCd 일치/불일치 · issDt 불일치 · 다중 후보 closest · tolerance 밖 · exclude 후 차순위 · 전부 exclude). worker/index.ts 통합(`cardModal` re-export)은 B7 와 동일 패턴으로 별도 commit 권장. 4A 와의 계약 변경 없음. 브랜치 `feat/b-worker-cardmodal` (origin/main 위에 cherry-pick — 이전 `feat/b-worker-scaffold` 의 stale b25c432 를 여기서 정착).
