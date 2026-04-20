@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta name="game:title" content="스톱워치 타겟" />
+  <meta name="game:min-players" content="2" />
+  <meta name="game:max-players" content="8" />
+  <meta name="game:description" content="숫자가 안 보이는 스톱워치를 목표 시간에 감으로 멈추기. 가장 먼 사람이 패배" />
+  <meta name="game:compare" content="max" />
+  <meta name="game:mode" content="separated" />
+
+  <title>스톱워치 타겟</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: radial-gradient(ellipse at top, #1e293b 0%, #0f172a 100%);
+      color: #e2e8f0; user-select: none; -webkit-user-select: none; }
+    #root { display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; padding: 1rem; gap: 1rem; }
+    .status { font-size: 0.8rem; opacity: 0.55; letter-spacing: 0.05em; text-transform: uppercase; }
+    .countdown { font-size: 8rem; font-weight: 900; line-height: 1;
+      color: #f59e0b; text-shadow: 0 0 40px rgba(245, 158, 11, 0.5); animation: pop 0.8s ease-out; }
+    .go { color: #22c55e; text-shadow: 0 0 60px rgba(34, 197, 94, 0.7); }
+    .target-card { background: rgba(245, 158, 11, 0.1); border: 2px solid #f59e0b;
+      border-radius: 1rem; padding: 1rem 2rem; text-align: center; }
+    .target-label { font-size: 0.8rem; opacity: 0.7; letter-spacing: 0.1em; text-transform: uppercase; }
+    .target-time { font-size: 3rem; font-weight: 900; color: #f59e0b;
+      font-variant-numeric: tabular-nums; margin-top: 0.25rem; line-height: 1; }
+    .watch { width: 11rem; height: 11rem; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #334155, #0f172a);
+      border: 6px solid #475569; position: relative; display: flex;
+      align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(34, 197, 94, 0.3); }
+    .watch .face { font-size: 4.5rem; display: inline-block; }
+    .watch.running .face { animation: tick 1.5s linear infinite; }
+    .watch .dot { position: absolute; width: 1rem; height: 1rem; border-radius: 50%;
+      background: #22c55e; top: -0.5rem; left: 50%; transform: translateX(-50%);
+      box-shadow: 0 0 12px #22c55e; }
+    .watch.running .dot { animation: blink 0.45s infinite alternate; }
+    .action { padding: 1.25rem 3rem; font-size: 1.3rem; border-radius: 0.75rem;
+      border: none; cursor: pointer; background: #f43f5e; color: #fff;
+      font-weight: 900; letter-spacing: 0.15em; box-shadow: 0 6px 0 #be123c;
+      transition: transform 0.05s, box-shadow 0.05s; }
+    .action:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 #be123c; }
+    .hint { font-size: 0.9rem; opacity: 0.7; max-width: 26rem; text-align: center; line-height: 1.45; }
+    .hint b { color: #f59e0b; }
+    .waiting { font-size: 1rem; opacity: 0.7; }
+    .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #334155;
+      border-top-color: #22c55e; border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: -2px; margin-right: 0.5rem; }
+    .result-icon { font-size: 6rem; line-height: 1; animation: pop 0.5s ease-out; }
+    .result-text { font-size: 1.8rem; font-weight: 800; letter-spacing: 0.05em; }
+    .loser-text { color: #f43f5e; }
+    .winner-text { color: #22c55e; }
+    .reveal { font-size: 0.95rem; opacity: 0.8; text-align: center; line-height: 1.5; }
+    .reveal b { color: #f59e0b; }
+    @keyframes pop { 0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes tick { to { transform: rotate(360deg); } }
+    @keyframes blink { to { opacity: 0.25; } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    .shake { animation: shake 0.4s; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="status" id="status">loading…</div>
+    <div id="stage"></div>
+  </div>
+  <script>
+    const GameSDK = (() => {
+      let me = null, players = [], sessionId = null, seed = null, submitted = false;
+      const handlers = { init: null, start: null, outcome: null };
+      const send = (msg) => window.parent.postMessage(msg, '*');
+      window.addEventListener('message', (e) => {
+        const msg = e.data;
+        if (!msg || !msg.type) return;
+        if (msg.type === 'init') {
+          me = msg.playerId; players = msg.players; sessionId = msg.sessionId; seed = msg.seed;
+          handlers.init?.({ me, players, sessionId, seed });
+          send({ type: 'ready' });
+        } else if (msg.type === 'start') handlers.start?.();
+        else if (msg.type === 'outcome') handlers.outcome?.({ loserId: msg.loserId, results: msg.results });
+      });
+      return {
+        on: (t, fn) => handlers[t] = fn,
+        submit: (value) => {
+          if (submitted) return;
+          if (typeof value !== 'number' || Number.isNaN(value)) return;
+          submitted = true;
+          send({ type: 'submit', value });
+        },
+        prng: () => {
+          let a = 0;
+          if (seed) for (let i = 0; i < seed.length; i++) a = (a * 31 + seed.charCodeAt(i)) | 0;
+          else a = Date.now() | 0;
+          return () => {
+            a |= 0; a = (a + 0x6D2B79F5) | 0;
+            let t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        },
+        state: () => ({ me, players, sessionId, seed }),
+      };
+    })();
+
+    const statusEl = document.getElementById('status');
+    const stageEl = document.getElementById('stage');
+    let target = null;
+    let startTs = null;
+
+    function renderReady() {
+      stageEl.innerHTML = `
+        <div class="hint">숫자가 <b>안 보이는</b> 스톱워치가 돌아갑니다.<br>감으로 목표 시간에 맞춰 STOP!</div>
+        <div class="target-card">
+          <div class="target-label">목표 시간</div>
+          <div class="target-time">${target.toFixed(2)}<span style="font-size:1.5rem">s</span></div>
+        </div>
+        <div class="hint">곧 시작합니다…</div>`;
+    }
+
+    function renderCountdown(n, cb) {
+      stageEl.innerHTML = `
+        <div class="target-card">
+          <div class="target-label">목표</div><div class="target-time">${target.toFixed(2)}s</div>
+        </div>
+        <div class="countdown ${n === 'GO!' ? 'go' : ''}">${n}</div>`;
+      setTimeout(cb, 700);
+    }
+
+    function renderPlay() {
+      stageEl.innerHTML = `
+        <div class="target-card">
+          <div class="target-label">목표</div>
+          <div class="target-time">${target.toFixed(2)}<span style="font-size:1.5rem">s</span></div>
+        </div>
+        <div class="watch running">
+          <div class="dot"></div>
+          <div class="face">⏱️</div>
+        </div>
+        <button class="action" id="stop">STOP</button>`;
+      startTs = performance.now();
+      document.getElementById('stop').addEventListener('click', doStop, { once: true });
+    }
+
+    function doStop() {
+      const elapsed = (performance.now() - startTs) / 1000;
+      const distance = Math.abs(elapsed - target);
+      renderWaiting(elapsed, distance);
+      GameSDK.submit(distance);
+    }
+
+    function renderWaiting(elapsed, distance) {
+      stageEl.innerHTML = `
+        <div class="target-card" style="padding:1rem 1.5rem">
+          <div class="target-label">결과</div>
+          <div style="font-size:1.25rem;margin:0.5rem 0">
+            내 시간 <b style="color:#22c55e">${elapsed.toFixed(2)}s</b>
+            / 목표 <b style="color:#f59e0b">${target.toFixed(2)}s</b>
+          </div>
+          <div class="hint">거리 <b>${distance.toFixed(2)}s</b></div>
+        </div>
+        <div class="waiting"><span class="spinner"></span>다른 플레이어 대기 중…</div>`;
+    }
+
+    GameSDK.on('init', ({ me, players }) => {
+      statusEl.textContent = `player ${me} · ${players.length}명`;
+      const rand = GameSDK.prng();
+      target = Math.round((1 + rand() * 9) * 100) / 100;
+      renderReady();
+    });
+
+    GameSDK.on('start', () => {
+      statusEl.textContent = 'round start';
+      let i = 3;
+      const step = () => {
+        if (i > 0) renderCountdown(String(i--), step);
+        else renderCountdown('GO!', renderPlay);
+      };
+      step();
+    });
+
+    GameSDK.on('outcome', ({ loserId, results }) => {
+      const { me } = GameSDK.state();
+      const iLost = me === loserId;
+      const myResult = results.find(r => r.playerId === me);
+      statusEl.textContent = 'round over';
+      stageEl.innerHTML = `
+        <div class="result-icon">${iLost ? '💀' : '🎉'}</div>
+        <div class="result-text ${iLost ? 'loser-text' : 'winner-text'}">${iLost ? 'YOU LOSE' : 'SAFE'}</div>
+        <div class="reveal">목표 <b>${target.toFixed(2)}s</b> · 거리 <b>${myResult ? myResult.value.toFixed(2) : '?'}s</b></div>`;
+      if (iLost) document.getElementById('root').classList.add('shake');
+    });
+
+    if (window.parent === window) {
+      const fakeSeed = Math.random().toString(36).slice(2, 10);
+      const fakePlayers = [{id:'p1',name:'나'},{id:'p2',name:'bot2'},{id:'p3',name:'bot3'},{id:'p4',name:'bot4'}];
+      setTimeout(() => {
+        window.postMessage({ type: 'init', playerId: 'p1', players: fakePlayers, sessionId: 'local', seed: fakeSeed }, '*');
+        setTimeout(() => window.postMessage({ type: 'start' }, '*'), 300);
+      }, 50);
+      window.addEventListener('message', (e) => {
+        if (e.data?.type === 'submit') {
+          const results = [{ playerId: 'p1', value: e.data.value }];
+          for (let i = 2; i <= 4; i++) results.push({ playerId: `p${i}`, value: Math.random() * 5 });
+          const loser = results.reduce((a, b) => a.value >= b.value ? a : b);
+          setTimeout(() => window.postMessage({ type: 'outcome', loserId: loser.playerId, results }, '*'), 800);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

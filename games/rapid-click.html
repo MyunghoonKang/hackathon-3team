@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta name="game:title" content="5초 클릭 연타" />
+  <meta name="game:min-players" content="2" />
+  <meta name="game:max-players" content="8" />
+  <meta name="game:description" content="5초 안에 버튼을 최대한 많이 클릭! 가장 적게 누른 사람이 패배" />
+  <meta name="game:compare" content="min" />
+  <meta name="game:mode" content="separated" />
+
+  <title>클릭 연타</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: radial-gradient(ellipse at top, #1e293b 0%, #0f172a 100%);
+      color: #e2e8f0; user-select: none; -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent; }
+    #root { display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; padding: 1rem; gap: 0.9rem; }
+    .status { font-size: 0.8rem; opacity: 0.55; letter-spacing: 0.05em; text-transform: uppercase; }
+    .countdown { font-size: 8rem; font-weight: 900; line-height: 1;
+      color: #f59e0b; text-shadow: 0 0 40px rgba(245, 158, 11, 0.5); animation: pop 0.8s ease-out; }
+    .go { color: #22c55e; text-shadow: 0 0 60px rgba(34, 197, 94, 0.7); }
+    .btn-wrap { position: relative; display: inline-flex; justify-content: center; align-items: center;
+      width: 14rem; height: 14rem; }
+    .click-btn { width: 13rem; height: 13rem; border-radius: 50%;
+      border: 6px solid #22c55e;
+      background: radial-gradient(circle at 30% 30%, #22c55e, #15803d);
+      color: #fff; font-size: 4.5rem; cursor: pointer; touch-action: manipulation;
+      box-shadow: 0 8px 0 #15803d, 0 0 40px rgba(34, 197, 94, 0.4);
+      transition: transform 0.04s, box-shadow 0.04s; font-weight: 900;
+      position: relative; z-index: 1; }
+    .click-btn:active { transform: translateY(6px); box-shadow: 0 2px 0 #15803d, 0 0 20px rgba(34, 197, 94, 0.4); }
+    .click-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .counter { font-size: 4rem; font-weight: 900; color: #22c55e;
+      font-variant-numeric: tabular-nums; line-height: 1;
+      text-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
+    .counter-label { font-size: 0.8rem; opacity: 0.6; letter-spacing: 0.15em; text-transform: uppercase; text-align: center; }
+    .timer-bar { width: 20rem; height: 0.75rem; background: #1e293b; border-radius: 0.5rem;
+      overflow: hidden; position: relative; }
+    .timer-fill { height: 100%; background: linear-gradient(90deg, #22c55e, #f59e0b, #f43f5e);
+      width: 100%; }
+    .timer-text { font-size: 0.9rem; opacity: 0.75; font-variant-numeric: tabular-nums; }
+    .hint { font-size: 0.9rem; opacity: 0.75; max-width: 24rem; text-align: center; line-height: 1.4; }
+    .hint b { color: #f59e0b; }
+    .waiting { font-size: 1rem; opacity: 0.75; }
+    .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #334155;
+      border-top-color: #22c55e; border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: -2px; margin-right: 0.5rem; }
+    .result-icon { font-size: 6rem; line-height: 1; animation: pop 0.5s ease-out; }
+    .result-text { font-size: 1.8rem; font-weight: 800; letter-spacing: 0.05em; }
+    .loser-text { color: #f43f5e; }
+    .winner-text { color: #22c55e; }
+    .reveal { font-size: 0.95rem; opacity: 0.8; }
+    .reveal b { color: #f59e0b; }
+    .pulse-ring { position: absolute; border: 3px solid #22c55e; border-radius: 50%;
+      pointer-events: none; top: 50%; left: 50%;
+      width: 13rem; height: 13rem; transform: translate(-50%, -50%);
+      animation: ring 0.45s ease-out forwards; }
+    @keyframes pop { 0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes ring { from { width: 13rem; height: 13rem; opacity: 0.7; }
+      to { width: 20rem; height: 20rem; opacity: 0; } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    .shake { animation: shake 0.4s; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="status" id="status">loading…</div>
+    <div id="stage"></div>
+  </div>
+  <script>
+    const GameSDK = (() => {
+      let me = null, players = [], sessionId = null, seed = null, submitted = false;
+      const handlers = { init: null, start: null, outcome: null };
+      const send = (msg) => window.parent.postMessage(msg, '*');
+      window.addEventListener('message', (e) => {
+        const msg = e.data;
+        if (!msg || !msg.type) return;
+        if (msg.type === 'init') {
+          me = msg.playerId; players = msg.players; sessionId = msg.sessionId; seed = msg.seed;
+          handlers.init?.({ me, players, sessionId, seed });
+          send({ type: 'ready' });
+        } else if (msg.type === 'start') handlers.start?.();
+        else if (msg.type === 'outcome') handlers.outcome?.({ loserId: msg.loserId, results: msg.results });
+      });
+      return {
+        on: (t, fn) => handlers[t] = fn,
+        submit: (value) => {
+          if (submitted) return;
+          if (typeof value !== 'number' || Number.isNaN(value)) return;
+          submitted = true;
+          send({ type: 'submit', value });
+        },
+        state: () => ({ me, players, sessionId, seed }),
+      };
+    })();
+
+    const statusEl = document.getElementById('status');
+    const stageEl = document.getElementById('stage');
+    const DURATION = 5000;
+    let clicks = 0;
+    let timerHandle = null;
+
+    function renderReady() {
+      stageEl.innerHTML = `
+        <div class="hint"><b>5초</b> 안에 버튼을 최대한 많이 누르세요!<br>
+          가장 <b>적게</b> 누른 사람이 <b style="color:#f43f5e">패배</b>.</div>
+        <div class="btn-wrap">
+          <button class="click-btn" disabled>👊</button>
+        </div>
+        <div class="hint">곧 시작합니다…</div>`;
+    }
+
+    function renderCountdown(n, cb) {
+      stageEl.innerHTML = `<div class="countdown ${n === 'GO!' ? 'go' : ''}">${n}</div>`;
+      setTimeout(cb, 700);
+    }
+
+    function renderPlay() {
+      clicks = 0;
+      stageEl.innerHTML = `
+        <div>
+          <div class="counter-label">CLICKS</div>
+          <div class="counter" id="cnt">0</div>
+        </div>
+        <div class="btn-wrap" id="wrap">
+          <button class="click-btn" id="btn">👊</button>
+        </div>
+        <div class="timer-bar"><div class="timer-fill" id="bar"></div></div>
+        <div class="timer-text" id="tt">5.0s</div>`;
+      const btn = document.getElementById('btn');
+      const cnt = document.getElementById('cnt');
+      const wrap = document.getElementById('wrap');
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        clicks++;
+        cnt.textContent = clicks;
+        const ring = document.createElement('div');
+        ring.className = 'pulse-ring';
+        wrap.appendChild(ring);
+        setTimeout(() => ring.remove(), 450);
+      });
+      const endTs = performance.now() + DURATION;
+      const bar = document.getElementById('bar');
+      const tt = document.getElementById('tt');
+      bar.style.transition = `width ${DURATION}ms linear`;
+      requestAnimationFrame(() => { bar.style.width = '0%'; });
+      timerHandle = setInterval(() => {
+        const left = Math.max(0, endTs - performance.now());
+        tt.textContent = (left / 1000).toFixed(1) + 's';
+        if (left <= 0) {
+          clearInterval(timerHandle);
+          finish();
+        }
+      }, 50);
+    }
+
+    function finish() {
+      const btn = document.getElementById('btn');
+      if (btn) btn.disabled = true;
+      renderWaiting();
+      GameSDK.submit(clicks);
+    }
+
+    function renderWaiting() {
+      stageEl.innerHTML = `
+        <div>
+          <div class="counter-label">최종 클릭</div>
+          <div class="counter">${clicks}</div>
+        </div>
+        <div class="waiting"><span class="spinner"></span>다른 플레이어 대기 중…</div>`;
+    }
+
+    GameSDK.on('init', ({ me, players }) => {
+      statusEl.textContent = `player ${me} · ${players.length}명`;
+      renderReady();
+    });
+
+    GameSDK.on('start', () => {
+      statusEl.textContent = 'round start';
+      let i = 3;
+      const step = () => {
+        if (i > 0) renderCountdown(String(i--), step);
+        else renderCountdown('GO!', renderPlay);
+      };
+      step();
+    });
+
+    GameSDK.on('outcome', ({ loserId, results }) => {
+      const { me } = GameSDK.state();
+      const iLost = me === loserId;
+      const myResult = results.find(r => r.playerId === me);
+      statusEl.textContent = 'round over';
+      stageEl.innerHTML = `
+        <div class="result-icon">${iLost ? '💀' : '🎉'}</div>
+        <div class="result-text ${iLost ? 'loser-text' : 'winner-text'}">${iLost ? 'YOU LOSE' : 'SAFE'}</div>
+        <div class="reveal">내 클릭 <b>${myResult ? myResult.value : clicks}회</b></div>`;
+      if (iLost) document.getElementById('root').classList.add('shake');
+    });
+
+    if (window.parent === window) {
+      const fakePlayers = [{id:'p1',name:'나'},{id:'p2',name:'bot2'},{id:'p3',name:'bot3'},{id:'p4',name:'bot4'}];
+      setTimeout(() => {
+        window.postMessage({ type: 'init', playerId: 'p1', players: fakePlayers, sessionId: 'local', seed: 'localseed' }, '*');
+        setTimeout(() => window.postMessage({ type: 'start' }, '*'), 300);
+      }, 50);
+      window.addEventListener('message', (e) => {
+        if (e.data?.type === 'submit') {
+          const results = [{ playerId: 'p1', value: e.data.value }];
+          for (let i = 2; i <= 4; i++) results.push({ playerId: `p${i}`, value: 15 + Math.floor(Math.random() * 35) });
+          const loser = results.reduce((a, b) => a.value <= b.value ? a : b);
+          setTimeout(() => window.postMessage({ type: 'outcome', loserId: loser.playerId, results }, '*'), 800);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

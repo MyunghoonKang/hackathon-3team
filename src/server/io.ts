@@ -101,7 +101,8 @@ export function attachIo(io: IOServer, ctx: Ctx): void {
       const runner = runners.get(m.sessionId);
       if (!runner) return ack?.({ error: 'no active game' });
       try {
-        runner.submit(m.playerId, parsed.data.value);
+        const submitterId = parsed.data.playerId ?? m.playerId;
+        runner.submit(submitterId, parsed.data.value);
         if (runner.isComplete()) {
           const outcome = runner.resolve();
           const snap = ctx.mgr.finishGame({

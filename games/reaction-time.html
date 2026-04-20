@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta name="game:title" content="반응속도" />
+  <meta name="game:min-players" content="2" />
+  <meta name="game:max-players" content="8" />
+  <meta name="game:description" content="3-2-1 후 초록 화면이 뜨면 최대한 빨리 클릭. 늦을수록 패배" />
+  <meta name="game:compare" content="max" />
+  <meta name="game:mode" content="separated" />
+
+  <title>반응속도</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: #0f172a; color: #e2e8f0; user-select: none; -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent; }
+    #root { display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; padding: 1rem; gap: 1rem;
+      cursor: pointer; transition: background 0.05s; }
+    #root.wait { background: #dc2626; }
+    #root.go { background: #22c55e; }
+    .status { font-size: 0.8rem; opacity: 0.55; letter-spacing: 0.05em; text-transform: uppercase; }
+    .countdown { font-size: 9rem; font-weight: 900; line-height: 1;
+      color: #f59e0b; text-shadow: 0 0 40px rgba(245, 158, 11, 0.5); animation: pop 0.7s ease-out; }
+    .bang { font-size: 9rem; font-weight: 900; color: #fff; animation: pop 0.2s ease-out; }
+    .wait-msg { font-size: 2.5rem; font-weight: 900; color: #fff; text-align: center; line-height: 1.2; animation: pop 0.3s; }
+    .wait-sub { font-size: 1rem; opacity: 0.85; color: #fff; }
+    .hint { font-size: 0.95rem; opacity: 0.75; max-width: 26rem; text-align: center; line-height: 1.45; }
+    .hint b { color: #f59e0b; }
+    .waiting { font-size: 1rem; opacity: 0.8; }
+    .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #334155;
+      border-top-color: #22c55e; border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: -2px; margin-right: 0.5rem; }
+    .ms-display { font-size: 3rem; font-weight: 900; color: #22c55e;
+      font-variant-numeric: tabular-nums; line-height: 1; text-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
+    .ms-label { font-size: 0.75rem; opacity: 0.7; letter-spacing: 0.15em; text-transform: uppercase; text-align: center; }
+    .penalty { color: #f43f5e !important; }
+    .result-icon { font-size: 6rem; line-height: 1; animation: pop 0.5s ease-out; }
+    .result-text { font-size: 1.8rem; font-weight: 800; letter-spacing: 0.05em; }
+    .loser-text { color: #f43f5e; }
+    .winner-text { color: #22c55e; }
+    .reveal { font-size: 0.95rem; opacity: 0.8; text-align: center; line-height: 1.5; }
+    .reveal b { color: #f59e0b; }
+    @keyframes pop { 0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    .shake { animation: shake 0.4s; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="status" id="status">loading…</div>
+    <div id="stage"></div>
+  </div>
+  <script>
+    const GameSDK = (() => {
+      let me = null, players = [], sessionId = null, seed = null, submitted = false;
+      const handlers = { init: null, start: null, outcome: null };
+      const send = (msg) => window.parent.postMessage(msg, '*');
+      window.addEventListener('message', (e) => {
+        const msg = e.data;
+        if (!msg || !msg.type) return;
+        if (msg.type === 'init') {
+          me = msg.playerId; players = msg.players; sessionId = msg.sessionId; seed = msg.seed;
+          handlers.init?.({ me, players, sessionId, seed });
+          send({ type: 'ready' });
+        } else if (msg.type === 'start') handlers.start?.();
+        else if (msg.type === 'outcome') handlers.outcome?.({ loserId: msg.loserId, results: msg.results });
+      });
+      return {
+        on: (t, fn) => handlers[t] = fn,
+        submit: (value) => {
+          if (submitted) return;
+          if (typeof value !== 'number' || Number.isNaN(value)) return;
+          submitted = true;
+          send({ type: 'submit', value });
+        },
+        state: () => ({ me, players, sessionId, seed }),
+      };
+    })();
+
+    const PENALTY_MS = 3000;
+    const root = document.getElementById('root');
+    const statusEl = document.getElementById('status');
+    const stageEl = document.getElementById('stage');
+
+    let phase = 'idle'; // idle | countdown | wait | go | done
+    let goTs = null;
+    let penalty = false;
+
+    function renderReady() {
+      stageEl.innerHTML = `
+        <div class="hint"><b>3-2-1</b> 후 화면이 <b style="color:#22c55e">초록</b>으로 바뀌면<br>최대한 빨리 <b>아무데나 클릭</b>!</div>
+        <div class="hint" style="opacity:0.6">※ 초록 전에 클릭하면 <b>+${PENALTY_MS}ms</b> 페널티</div>
+        <div class="hint">곧 시작합니다…</div>`;
+    }
+
+    function renderCountdown(n, cb) {
+      phase = 'countdown';
+      stageEl.innerHTML = `<div class="countdown">${n}</div>`;
+      setTimeout(cb, 750);
+    }
+
+    function renderWait() {
+      phase = 'wait';
+      root.classList.add('wait');
+      stageEl.innerHTML = `
+        <div class="wait-msg">WAIT...</div>
+        <div class="wait-sub">초록으로 바뀔 때 클릭</div>`;
+      const delay = 500 + Math.random() * 2000;
+      setTimeout(() => { if (phase === 'wait') goGreen(); }, delay);
+    }
+
+    function goGreen() {
+      phase = 'go';
+      root.classList.remove('wait');
+      root.classList.add('go');
+      stageEl.innerHTML = `<div class="bang">땡!</div>`;
+      goTs = performance.now();
+    }
+
+    function onClick() {
+      if (phase === 'wait') {
+        // fake start
+        phase = 'done';
+        penalty = true;
+        root.classList.remove('wait');
+        stageEl.innerHTML = `
+          <div class="ms-label">FAKE START!</div>
+          <div class="ms-display penalty">+${PENALTY_MS}ms</div>
+          <div class="waiting"><span class="spinner"></span>제출됨 · 대기 중…</div>`;
+        GameSDK.submit(PENALTY_MS);
+      } else if (phase === 'go') {
+        const ms = performance.now() - goTs;
+        phase = 'done';
+        root.classList.remove('go');
+        stageEl.innerHTML = `
+          <div class="ms-label">REACTION</div>
+          <div class="ms-display">${ms.toFixed(0)}<span style="font-size:1.5rem">ms</span></div>
+          <div class="waiting"><span class="spinner"></span>다른 플레이어 대기 중…</div>`;
+        GameSDK.submit(ms);
+      }
+    }
+    root.addEventListener('click', onClick);
+
+    GameSDK.on('init', ({ me, players }) => {
+      statusEl.textContent = `player ${me} · ${players.length}명`;
+      renderReady();
+    });
+
+    GameSDK.on('start', () => {
+      statusEl.textContent = 'round start';
+      let i = 3;
+      const step = () => {
+        if (i > 0) renderCountdown(String(i--), step);
+        else renderWait();
+      };
+      step();
+    });
+
+    GameSDK.on('outcome', ({ loserId, results }) => {
+      const { me } = GameSDK.state();
+      const iLost = me === loserId;
+      const myResult = results.find(r => r.playerId === me);
+      statusEl.textContent = 'round over';
+      root.classList.remove('wait', 'go');
+      stageEl.innerHTML = `
+        <div class="result-icon">${iLost ? '💀' : '🎉'}</div>
+        <div class="result-text ${iLost ? 'loser-text' : 'winner-text'}">${iLost ? 'YOU LOSE' : 'SAFE'}</div>
+        <div class="reveal">${penalty ? '페널티 ' : ''}내 반응 <b>${myResult ? Math.round(myResult.value) : '?'}ms</b></div>`;
+      if (iLost) root.classList.add('shake');
+    });
+
+    if (window.parent === window) {
+      const fakePlayers = [{id:'p1',name:'나'},{id:'p2',name:'bot2'},{id:'p3',name:'bot3'},{id:'p4',name:'bot4'}];
+      setTimeout(() => {
+        window.postMessage({ type: 'init', playerId: 'p1', players: fakePlayers, sessionId: 'local', seed: 'localseed' }, '*');
+        setTimeout(() => window.postMessage({ type: 'start' }, '*'), 300);
+      }, 50);
+      window.addEventListener('message', (e) => {
+        if (e.data?.type === 'submit') {
+          const results = [{ playerId: 'p1', value: e.data.value }];
+          for (let i = 2; i <= 4; i++) results.push({ playerId: `p${i}`, value: 180 + Math.random() * 350 });
+          const loser = results.reduce((a, b) => a.value >= b.value ? a : b);
+          setTimeout(() => window.postMessage({ type: 'outcome', loserId: loser.playerId, results }, '*'), 800);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

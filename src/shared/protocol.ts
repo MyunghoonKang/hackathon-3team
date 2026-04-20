@@ -55,6 +55,8 @@ export interface Player {
 
 export type CompareRule = 'max' | 'min';
 
+export type GameMode = 'separated' | 'shared';
+
 export interface GameMeta {
   id: string;
   title: string;
@@ -62,6 +64,7 @@ export interface GameMeta {
   maxPlayers: number;
   description: string;
   compare: CompareRule;
+  mode: GameMode;
 }
 
 // Dev 1·2 가 게임 HTML <head> 에 넣어야 할 meta 태그 이름.
@@ -201,6 +204,7 @@ export const GameMetaSchema = z.object({
   maxPlayers: z.number().int().min(2),
   description: z.string().default(''),
   compare: z.enum(['max', 'min']),
+  mode: z.enum(['separated', 'shared']).default('separated'),
 }).refine(d => d.maxPlayers >= d.minPlayers, {
   message: 'maxPlayers must be >= minPlayers',
 });
@@ -222,7 +226,10 @@ export const SocketJoin = z.object({
 });
 export const SocketSelectGame = z.object({ gameId: z.string() });
 export const SocketStartGame = z.object({});
-export const SocketSubmitResult = z.object({ value: z.number().finite() });
+export const SocketSubmitResult = z.object({
+  value: z.number().finite(),
+  playerId: z.string().optional(),
+});
 
 // 이전 run 버그 방지: 3B ResultView · CredentialForm 이 RoomStatePayload 를
 // 받을 때 prop 네이밍은 `snap` (전체) · `me` (내 playerId) 고정.
@@ -231,3 +238,24 @@ export interface ViewProps {
   snap: RoomStatePayload;
   me: string; // 내 playerId
 }
+
+// ---------------------------------------------------------------------------
+// iframe ↔ 호스트 postMessage 계약 (GameFrame ↔ 게임 HTML)
+// ---------------------------------------------------------------------------
+
+// iframe → 호스트 방향
+export const IframeToHost = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('ready') }),
+  z.object({
+    type: z.literal('submit'),
+    value: z.number().finite(),
+    playerId: z.string().optional(), // shared 모드에서 게임이 타인 대신 제출 시 명시
+  }),
+]);
+export type IframeToHostMsg = z.infer<typeof IframeToHost>;
+
+// 호스트 → iframe 방향
+export type HostToIframeMsg =
+  | { type: 'init'; playerId: string; players: Player[]; sessionId: string; seed: string }
+  | { type: 'start' }
+  | { type: 'outcome'; loserId: string; results: GameResult[] };

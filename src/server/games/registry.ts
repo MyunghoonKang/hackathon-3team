@@ -45,6 +45,7 @@ export class GameRegistry extends EventEmitter {
       maxPlayers: Number(raw['max-players']),
       description: raw['description'] ?? '',
       compare: raw['compare'],
+      mode: raw['mode'],
     };
     const parsed = GameMetaSchema.safeParse(draft);
     if (!parsed.success) {

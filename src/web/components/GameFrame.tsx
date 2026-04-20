@@ -8,7 +8,7 @@ interface Props {
   players: Player[];
   sessionId: string;
   seed: string;
-  onSubmit: (value: number) => void;
+  onSubmit: (value: number, playerId?: string) => void;
   showOutcome?: { loserId: string; results: { playerId: string; value: number }[] } | null;
 }
 
@@ -16,7 +16,7 @@ export function GameFrame({ gameUrl, playerId, players, sessionId, seed, onSubmi
   const ref = useRef<HTMLIFrameElement>(null);
   const { send } = useGameFrame(ref, (msg) => {
     if (msg.type === 'ready') send({ type: 'start' });
-    if (msg.type === 'submit') onSubmit(msg.value);
+    if (msg.type === 'submit') onSubmit(msg.value, msg.playerId);
   });
 
   useEffect(() => {

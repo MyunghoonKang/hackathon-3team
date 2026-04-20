@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta name="game:title" content="주사위 굴리기" />
+  <meta name="game:min-players" content="2" />
+  <meta name="game:max-players" content="8" />
+  <meta name="game:description" content="주사위 2개를 굴려 나온 합계가 가장 작은 사람이 패배" />
+  <meta name="game:compare" content="min" />
+  <meta name="game:mode" content="separated" />
+
+  <title>주사위 굴리기</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: radial-gradient(ellipse at top, #1e293b 0%, #0f172a 100%);
+      color: #e2e8f0; user-select: none; -webkit-user-select: none; }
+    #root { display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; padding: 1rem; gap: 1rem; }
+    .status { font-size: 0.8rem; opacity: 0.55; letter-spacing: 0.05em; text-transform: uppercase; }
+    .countdown { font-size: 8rem; font-weight: 900; line-height: 1;
+      color: #f59e0b; text-shadow: 0 0 40px rgba(245, 158, 11, 0.5); animation: pop 0.8s ease-out; }
+    .go { color: #22c55e; text-shadow: 0 0 60px rgba(34, 197, 94, 0.7); }
+
+    .tray { display: flex; gap: 1.5rem; margin: 0.5rem 0; perspective: 600px; }
+    .die { width: 7rem; height: 7rem; border-radius: 1rem;
+      background: linear-gradient(135deg, #fff 0%, #e2e8f0 100%);
+      color: #0f172a; display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr;
+      padding: 0.9rem; gap: 0.25rem; box-shadow: 0 8px 0 #94a3b8, 0 0 30px rgba(245, 158, 11, 0.25);
+      transform-style: preserve-3d; }
+    .die.rolling { animation: roll 0.18s linear infinite; }
+    .die.landed { animation: land 0.5s ease-out; }
+    .die .dot { width: 100%; height: 100%; background: #0f172a; border-radius: 50%;
+      align-self: center; justify-self: center; }
+    .die .slot { display: flex; align-items: center; justify-content: center; }
+
+    .sum-card { background: rgba(34, 197, 94, 0.1); border: 2px solid #22c55e;
+      border-radius: 1rem; padding: 0.8rem 2rem; text-align: center; }
+    .sum-label { font-size: 0.8rem; opacity: 0.7; letter-spacing: 0.15em; text-transform: uppercase; }
+    .sum-value { font-size: 3rem; font-weight: 900; color: #22c55e;
+      font-variant-numeric: tabular-nums; line-height: 1; margin-top: 0.25rem; }
+    .sum-value.low { color: #f43f5e; }
+    .sum-value.mid { color: #f59e0b; }
+
+    .hint { font-size: 0.95rem; opacity: 0.75; max-width: 26rem; text-align: center; line-height: 1.45; }
+    .hint b { color: #f59e0b; }
+    .waiting { font-size: 1rem; opacity: 0.8; }
+    .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #334155;
+      border-top-color: #22c55e; border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: -2px; margin-right: 0.5rem; }
+    .result-icon { font-size: 6rem; line-height: 1; animation: pop 0.5s ease-out; }
+    .result-text { font-size: 1.8rem; font-weight: 800; letter-spacing: 0.05em; }
+    .loser-text { color: #f43f5e; }
+    .winner-text { color: #22c55e; }
+    .reveal { font-size: 0.95rem; opacity: 0.8; text-align: center; line-height: 1.5; }
+    .reveal b { color: #f59e0b; }
+
+    @keyframes pop { 0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes roll {
+      0% { transform: rotateX(0) rotateY(0) translateY(0); }
+      25% { transform: rotateX(90deg) rotateY(45deg) translateY(-12px); }
+      50% { transform: rotateX(180deg) rotateY(90deg) translateY(0); }
+      75% { transform: rotateX(270deg) rotateY(135deg) translateY(-12px); }
+      100% { transform: rotateX(360deg) rotateY(180deg) translateY(0); }
+    }
+    @keyframes land {
+      0% { transform: scale(1.3) rotate(-5deg); }
+      50% { transform: scale(0.95) rotate(2deg); }
+      100% { transform: scale(1) rotate(0); }
+    }
+    @keyframes shake { 0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    .shake { animation: shake 0.4s; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="status" id="status">loading…</div>
+    <div id="stage"></div>
+  </div>
+  <script>
+    const GameSDK = (() => {
+      let me = null, players = [], sessionId = null, seed = null, submitted = false;
+      const handlers = { init: null, start: null, outcome: null };
+      const send = (msg) => window.parent.postMessage(msg, '*');
+      window.addEventListener('message', (e) => {
+        const msg = e.data;
+        if (!msg || !msg.type) return;
+        if (msg.type === 'init') {
+          me = msg.playerId; players = msg.players; sessionId = msg.sessionId; seed = msg.seed;
+          handlers.init?.({ me, players, sessionId, seed });
+          send({ type: 'ready' });
+        } else if (msg.type === 'start') handlers.start?.();
+        else if (msg.type === 'outcome') handlers.outcome?.({ loserId: msg.loserId, results: msg.results });
+      });
+      return {
+        on: (t, fn) => handlers[t] = fn,
+        submit: (value) => {
+          if (submitted) return;
+          if (typeof value !== 'number' || Number.isNaN(value)) return;
+          submitted = true;
+          send({ type: 'submit', value });
+        },
+        state: () => ({ me, players, sessionId, seed }),
+      };
+    })();
+
+    // 1~6 주사위 점 배치. 3x3 그리드에서 점이 위치할 슬롯 번호(0-8)
+    const DOT_MAP = {
+      1: [4],
+      2: [0, 8],
+      3: [0, 4, 8],
+      4: [0, 2, 6, 8],
+      5: [0, 2, 4, 6, 8],
+      6: [0, 2, 3, 5, 6, 8],
+    };
+
+    function renderDie(value) {
+      const slots = DOT_MAP[value] || [];
+      let html = '';
+      for (let i = 0; i < 9; i++) {
+        html += `<div class="slot">${slots.includes(i) ? '<div class="dot"></div>' : ''}</div>`;
+      }
+      return html;
+    }
+
+    function hashInt(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+      return h >>> 0;
+    }
+
+    const statusEl = document.getElementById('status');
+    const stageEl = document.getElementById('stage');
+
+    let finalD1 = null, finalD2 = null, finalSum = null;
+    let rollInterval = null;
+
+    function renderReady() {
+      stageEl.innerHTML = `
+        <div class="hint">주사위 2개를 굴립니다.<br>합계가 가장 <b style="color:#f43f5e">작은</b> 사람이 <b>패배</b>!</div>
+        <div class="tray">
+          <div class="die">${renderDie(1)}</div>
+          <div class="die">${renderDie(6)}</div>
+        </div>
+        <div class="hint">곧 시작합니다…</div>`;
+    }
+
+    function renderCountdown(n, cb) {
+      stageEl.innerHTML = `<div class="countdown ${n === 'GO!' ? 'go' : ''}">${n}</div>`;
+      setTimeout(cb, 700);
+    }
+
+    function renderRolling() {
+      stageEl.innerHTML = `
+        <div class="status" style="font-size:1rem;color:#f59e0b;letter-spacing:0.2em;animation:pop 0.4s">ROLLING…</div>
+        <div class="tray">
+          <div class="die rolling" id="d1">${renderDie(1)}</div>
+          <div class="die rolling" id="d2">${renderDie(1)}</div>
+        </div>`;
+      const d1 = document.getElementById('d1');
+      const d2 = document.getElementById('d2');
+      rollInterval = setInterval(() => {
+        d1.innerHTML = renderDie(1 + Math.floor(Math.random() * 6));
+        d2.innerHTML = renderDie(1 + Math.floor(Math.random() * 6));
+      }, 80);
+      setTimeout(landDice, 1800);
+    }
+
+    function landDice() {
+      clearInterval(rollInterval);
+      const d1El = document.getElementById('d1');
+      const d2El = document.getElementById('d2');
+      d1El.innerHTML = renderDie(finalD1);
+      d2El.innerHTML = renderDie(finalD2);
+      d1El.classList.remove('rolling'); d1El.classList.add('landed');
+      d2El.classList.remove('rolling'); d2El.classList.add('landed');
+      setTimeout(() => {
+        const cls = finalSum <= 6 ? 'low' : finalSum <= 9 ? 'mid' : '';
+        stageEl.innerHTML = `
+          <div class="tray">
+            <div class="die">${renderDie(finalD1)}</div>
+            <div class="die">${renderDie(finalD2)}</div>
+          </div>
+          <div class="sum-card">
+            <div class="sum-label">합계</div>
+            <div class="sum-value ${cls}">${finalSum}</div>
+          </div>
+          <div class="waiting"><span class="spinner"></span>다른 플레이어 대기 중…</div>`;
+        GameSDK.submit(finalSum);
+      }, 500);
+    }
+
+    GameSDK.on('init', ({ me, players, seed }) => {
+      statusEl.textContent = `player ${me} · ${players.length}명`;
+      const h = hashInt((seed || 'x') + me);
+      finalD1 = (h % 6) + 1;
+      finalD2 = (Math.floor(h / 6) % 6) + 1;
+      finalSum = finalD1 + finalD2;
+      renderReady();
+    });
+
+    GameSDK.on('start', () => {
+      statusEl.textContent = 'round start';
+      let i = 3;
+      const step = () => {
+        if (i > 0) renderCountdown(String(i--), step);
+        else renderCountdown('ROLL!', renderRolling);
+      };
+      step();
+    });
+
+    GameSDK.on('outcome', ({ loserId, results }) => {
+      const { me } = GameSDK.state();
+      const iLost = me === loserId;
+      const myResult = results.find(r => r.playerId === me);
+      statusEl.textContent = 'round over';
+      stageEl.innerHTML = `
+        <div class="result-icon">${iLost ? '💀' : '🎉'}</div>
+        <div class="result-text ${iLost ? 'loser-text' : 'winner-text'}">${iLost ? 'YOU LOSE' : 'SAFE'}</div>
+        <div class="tray" style="transform:scale(0.75)">
+          <div class="die">${renderDie(finalD1)}</div>
+          <div class="die">${renderDie(finalD2)}</div>
+        </div>
+        <div class="reveal">내 합계 <b>${myResult ? myResult.value : finalSum}</b></div>`;
+      if (iLost) document.getElementById('root').classList.add('shake');
+    });
+
+    if (window.parent === window) {
+      const fakeSeed = Math.random().toString(36).slice(2, 10);
+      const fakePlayers = [{id:'p1',name:'나'},{id:'p2',name:'bot2'},{id:'p3',name:'bot3'},{id:'p4',name:'bot4'}];
+      setTimeout(() => {
+        window.postMessage({ type: 'init', playerId: 'p1', players: fakePlayers, sessionId: 'local', seed: fakeSeed }, '*');
+        setTimeout(() => window.postMessage({ type: 'start' }, '*'), 300);
+      }, 50);
+      window.addEventListener('message', (e) => {
+        if (e.data?.type === 'submit') {
+          const results = [{ playerId: 'p1', value: e.data.value }];
+          for (let i = 2; i <= 4; i++) results.push({ playerId: `p${i}`, value: 2 + Math.floor(Math.random() * 11) });
+          const loser = results.reduce((a, b) => a.value <= b.value ? a : b);
+          setTimeout(() => window.postMessage({ type: 'outcome', loserId: loser.playerId, results }, '*'), 800);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

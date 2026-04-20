@@ -39,8 +39,8 @@ export function GameView({ snap, me }: { snap: RoomStatePayload; me: string }) {
 
   if (!game) return <div className="game"><p className="room__loading">게임 로딩 중…</p></div>;
 
-  const submit = (value: number) => {
-    socket.emit('player:submit', { value }, (res: { error?: string }) => {
+  const submit = (value: number, playerId?: string) => {
+    socket.emit('player:submit', { value, ...(playerId ? { playerId } : {}) }, (res: { error?: string }) => {
       if (res?.error) alert(res.error);
     });
   };

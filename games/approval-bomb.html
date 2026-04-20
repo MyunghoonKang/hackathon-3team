@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- 필수 메타 태그 6개 -->
+  <meta name="game:title" content="결재 폭탄 룰렛">
+  <meta name="game:min-players" content="2">
+  <meta name="game:max-players" content="8">
+  <meta name="game:description" content="불타는 품의서가 돌다가 멈추면 그 사람이 결재 담당! 꼴찌에게 폭발!">
+  <meta name="game:compare" content="max">
+  <meta name="game:mode" content="shared">
+
+  <title>결재 폭탄 룰렛</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: #0c0a1a; color: #e2e8f0; overflow: hidden; }
+
+    /* ── 대기 화면 ── */
+    #waiting {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; gap: 1.5rem; animation: fadeIn 0.5s;
+    }
+    #waiting h1 { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #ff6b35, #f7c948); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    #waiting p { font-size: 1rem; opacity: 0.6; }
+    .waiting-spinner { font-size: 2.5rem; animation: spin 2s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .player-select { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+    .player-btn {
+      width: 3.5rem; height: 3.5rem; border-radius: 50%; border: 3px solid #334155;
+      background: #1e293b; color: #e2e8f0; font-size: 1.3rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .player-btn:hover { border-color: #ff6b35; background: #2d1f0f; transform: scale(1.1); }
+    .start-btn {
+      margin-top: 1rem; padding: 0.8rem 2.5rem; font-size: 1.1rem; font-weight: 700; border: none; border-radius: 1rem;
+      background: linear-gradient(135deg, #ff6b35, #e8450e); color: white; cursor: pointer;
+      transition: transform 0.2s; display: none;
+    }
+    .start-btn:hover { transform: scale(1.05); }
+
+    /* ── 게임 화면 ── */
+    #game { display: none; height: 100%; position: relative; }
+
+    /* 원형 배치 컨테이너 */
+    .circle-arena {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: min(80vw, 80vh); height: min(80vw, 80vh);
+    }
+
+    /* 플레이어 슬롯 */
+    .player-slot {
+      position: absolute; display: flex; flex-direction: column; align-items: center;
+      transform: translate(-50%, -50%); transition: all 0.5s;
+    }
+    .player-avatar {
+      width: 70px; height: 90px; position: relative; transition: all 0.3s;
+    }
+    .player-name {
+      margin-top: 0.3rem; font-size: 0.85rem; font-weight: 600;
+      background: rgba(15,23,42,0.8); padding: 0.2rem 0.6rem; border-radius: 0.5rem;
+      white-space: nowrap;
+    }
+    .player-slot.eliminated .player-avatar { opacity: 0.25; filter: grayscale(1); }
+    .player-slot.eliminated .player-name { opacity: 0.3; text-decoration: line-through; }
+
+    /* 폭탄 (불타는 서류) */
+    .bomb {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 80px; height: 80px; z-index: 10; transition: all 0.08s linear;
+      filter: drop-shadow(0 0 20px rgba(255,107,53,0.8));
+    }
+    .bomb.spinning { animation: bombPulse 0.3s infinite alternate; }
+    @keyframes bombPulse {
+      from { filter: drop-shadow(0 0 15px rgba(255,107,53,0.6)); transform: translate(-50%,-50%) scale(1); }
+      to { filter: drop-shadow(0 0 30px rgba(255,60,20,1)); transform: translate(-50%,-50%) scale(1.1); }
+    }
+
+    /* 폭발 이펙트 */
+    .explosion {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 100; pointer-events: none; display: none;
+    }
+    .explosion.active { display: block; animation: explosionFlash 0.8s; }
+    @keyframes explosionFlash {
+      0% { background: rgba(255,107,53,0.9); }
+      30% { background: rgba(255,200,50,0.7); }
+      100% { background: transparent; }
+    }
+
+    /* 서류 파티클 */
+    .paper-particle {
+      position: fixed; z-index: 101; font-size: 1.5rem; pointer-events: none;
+      animation: paperFall 2s forwards;
+    }
+    @keyframes paperFall {
+      0% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+      100% { opacity: 0; transform: translateY(100vh) rotate(720deg) scale(0.3); }
+    }
+
+    /* 안도 애니메이션 */
+    .player-slot.safe .player-avatar { animation: safeRelief 0.8s ease; }
+    @keyframes safeRelief {
+      0% { transform: scale(1); }
+      30% { transform: scale(0.85) translateY(5px); }
+      60% { transform: scale(1.15) translateY(-10px); }
+      100% { transform: scale(1) translateY(0); }
+    }
+    .safe-text {
+      position: absolute; top: -2rem; font-size: 1.5rem;
+      animation: floatUp 1.5s forwards;
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(0.5); }
+      50% { opacity: 1; transform: translateY(-20px) scale(1.2); }
+      100% { opacity: 0; transform: translateY(-40px) scale(1); }
+    }
+
+    /* 패자 연출 */
+    .loser-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 200; background: rgba(0,0,0,0.85);
+      flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem;
+    }
+    .loser-overlay.active { display: flex; animation: fadeIn 0.5s; }
+    .loser-overlay h2 {
+      font-size: 2.5rem; font-weight: 800;
+      background: linear-gradient(135deg, #ff6b35, #f7c948); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .loser-overlay .loser-name { font-size: 3rem; font-weight: 900; color: #f43f5e; }
+    .loser-overlay .loser-msg { font-size: 1.2rem; opacity: 0.7; }
+    .loser-avatar-big { width: 120px; height: 150px; animation: loserShake 0.5s infinite; }
+    @keyframes loserShake {
+      0%,100% { transform: rotate(0); }
+      25% { transform: rotate(-5deg); }
+      75% { transform: rotate(5deg); }
+    }
+
+    /* 카운트다운 */
+    #countdown {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 150; background: rgba(0,0,0,0.7);
+      align-items: center; justify-content: center; font-size: 8rem; font-weight: 900;
+      color: #ff6b35; text-shadow: 0 0 40px rgba(255,107,53,0.5);
+    }
+    #countdown.active { display: flex; animation: fadeIn 0.2s; }
+    .cd-num { animation: cdPop 0.8s; }
+    @keyframes cdPop {
+      0% { transform: scale(2); opacity: 0; }
+      50% { transform: scale(1); opacity: 1; }
+      90% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.8; }
+    }
+
+    /* 타이틀 바 */
+    .game-header {
+      position: absolute; top: 1rem; left: 50%; transform: translateX(-50%);
+      text-align: center; z-index: 5;
+    }
+    .game-header h1 { font-size: 1.3rem; font-weight: 700; opacity: 0.4; }
+
+    /* 라운드 표시 */
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+<!-- 대기 화면 (플랫폼 init 전 또는 단독 테스트용) -->
+<div id="waiting">
+  <h1>결재 폭탄 룰렛</h1>
+  <div class="waiting-spinner">📋</div>
+  <p id="waitingMsg">플레이어 대기 중…</p>
+  <div id="testMode" style="margin-top:1rem; display:none;">
+    <p style="font-size:0.85rem; opacity:0.7; margin-bottom:0.8rem;">테스트 모드 — 인원 수를 선택하세요</p>
+    <div class="player-select" id="playerSelect"></div>
+    <button class="start-btn" id="startBtn">게임 시작!</button>
+  </div>
+</div>
+
+<!-- 게임 -->
+<div id="game">
+  <div class="game-header"><h1>결재 폭탄 룰렛</h1></div>
+  <div class="circle-arena" id="arena"></div>
+</div>
+
+<!-- 오버레이들 -->
+<div class="explosion" id="explosion"></div>
+<div id="countdown"></div>
+<div class="loser-overlay" id="loserOverlay">
+  <h2>품의서 폭탄 명중!</h2>
+  <div id="loserAvatarBig" class="loser-avatar-big"></div>
+  <div class="loser-name" id="loserName"></div>
+  <div class="loser-msg">결재 상신은 당신의 몫입니다 📋</div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────
+// GameSDK (SHARED 모드 — 다중 submit 지원)
+// ──────────────────────────────────────────────────────────
+const GameSDK = (() => {
+  let me = null, players = [], sessionId = null, seed = null;
+  const submitted = new Set();
+  const handlers = { init: null, start: null, outcome: null };
+
+  function send(msg) { window.parent.postMessage(msg, '*'); }
+  function on(type, fn) { handlers[type] = fn; }
+
+  window.addEventListener('message', (e) => {
+    const msg = e.data;
+    if (!msg || !msg.type) return;
+    if (msg.type === 'init') {
+      me = msg.playerId; players = msg.players; sessionId = msg.sessionId; seed = msg.seed;
+      handlers.init?.({ me, players, sessionId, seed });
+      send({ type: 'ready' });
+    } else if (msg.type === 'start') {
+      handlers.start?.();
+    } else if (msg.type === 'outcome') {
+      handlers.outcome?.({ loserId: msg.loserId, results: msg.results });
+    }
+  });
+
+  function submit(playerId, value) {
+    if (submitted.has(playerId)) return;
+    if (typeof value !== 'number' || Number.isNaN(value)) return;
+    submitted.add(playerId);
+    send({ type: 'submit', playerId, value });
+  }
+
+  function prng(s) {
+    let a = 0;
+    const str = s || seed || String(Date.now());
+    for (let i = 0; i < str.length; i++) a = (a * 31 + str.charCodeAt(i)) | 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  return { on, submit, prng, state: () => ({ me, players, sessionId, seed }) };
+})();
+
+// ──────────────────────────────────────────────────────────
+// SVG 캐릭터 생성 (귀여운 직장인들)
+// ──────────────────────────────────────────────────────────
+const CHAR_COLORS = [
+  { hair: '#2d1b69', suit: '#3b82f6', skin: '#fbbf7c', tie: '#ef4444' },
+  { hair: '#8b4513', suit: '#10b981', skin: '#f5d0a9', tie: '#f59e0b' },
+  { hair: '#1a1a2e', suit: '#8b5cf6', skin: '#fbbf7c', tie: '#06b6d4' },
+  { hair: '#d4a373', suit: '#ec4899', skin: '#f5d0a9', tie: '#84cc16' },
+  { hair: '#6b2f1a', suit: '#f97316', skin: '#fbbf7c', tie: '#6366f1' },
+  { hair: '#374151', suit: '#14b8a6', skin: '#f5d0a9', tie: '#f43f5e' },
+  { hair: '#92400e', suit: '#0ea5e9', skin: '#fbbf7c', tie: '#a855f7' },
+  { hair: '#1e3a5f', suit: '#e11d48', skin: '#f5d0a9', tie: '#22c55e' },
+];
+
+function createCharSVG(index, expression) {
+  const c = CHAR_COLORS[index % CHAR_COLORS.length];
+  const exp = expression || 'normal';
+
+  // 눈 표현
+  let eyes;
+  if (exp === 'normal') {
+    eyes = `<ellipse cx="28" cy="36" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="42" cy="36" rx="3" ry="3.5" fill="#1a1a2e"/>
+            <ellipse cx="29" cy="35" rx="1" ry="1" fill="white"/><ellipse cx="43" cy="35" rx="1" ry="1" fill="white"/>`;
+  } else if (exp === 'scared') {
+    eyes = `<ellipse cx="28" cy="36" rx="4" ry="5" fill="#1a1a2e"/><ellipse cx="42" cy="36" rx="4" ry="5" fill="#1a1a2e"/>
+            <ellipse cx="29" cy="34" rx="1.5" ry="1.5" fill="white"/><ellipse cx="43" cy="34" rx="1.5" ry="1.5" fill="white"/>`;
+  } else if (exp === 'relieved') {
+    eyes = `<path d="M25 36 Q28 33 31 36" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M39 36 Q42 33 45 36" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  } else if (exp === 'crying') {
+    eyes = `<path d="M25 34 Q28 37 31 34" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M39 34 Q42 37 45 34" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <circle cx="27" cy="40" r="1.5" fill="#60a5fa" opacity="0.7"><animate attributeName="cy" values="40;48" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.7;0" dur="1s" repeatCount="indefinite"/></circle>
+            <circle cx="43" cy="40" r="1.5" fill="#60a5fa" opacity="0.7"><animate attributeName="cy" values="40;48" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.7;0" dur="1s" repeatCount="indefinite"/></circle>`;
+  }
+
+  // 입 표현
+  let mouth;
+  if (exp === 'normal') mouth = `<path d="M31 44 Q35 47 39 44" stroke="#1a1a2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+  else if (exp === 'scared') mouth = `<ellipse cx="35" cy="46" rx="4" ry="3" fill="#1a1a2e"/>`;
+  else if (exp === 'relieved') mouth = `<path d="M30 43 Q35 48 40 43" stroke="#1a1a2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+  else if (exp === 'crying') mouth = `<path d="M30 46 Q35 42 40 46" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+
+  // 볼터치
+  const blush = (exp === 'relieved' || exp === 'scared')
+    ? `<ellipse cx="23" cy="42" rx="4" ry="2.5" fill="#ff9999" opacity="0.4"/><ellipse cx="47" cy="42" rx="4" ry="2.5" fill="#ff9999" opacity="0.4"/>`
+    : '';
+
+  return `<svg viewBox="0 0 70 90" xmlns="http://www.w3.org/2000/svg">
+    <!-- 몸통 (정장) -->
+    <rect x="18" y="55" width="34" height="35" rx="8" fill="${c.suit}"/>
+    <!-- 셔츠 -->
+    <rect x="28" y="55" width="14" height="20" rx="2" fill="white"/>
+    <!-- 넥타이 -->
+    <polygon points="35,57 31,70 35,73 39,70" fill="${c.tie}"/>
+    <!-- 얼굴 -->
+    <ellipse cx="35" cy="38" rx="18" ry="20" fill="${c.skin}"/>
+    <!-- 머리카락 -->
+    <ellipse cx="35" cy="24" rx="19" ry="12" fill="${c.hair}"/>
+    <rect x="16" y="22" width="38" height="8" rx="4" fill="${c.hair}"/>
+    <!-- 눈 -->
+    ${eyes}
+    <!-- 입 -->
+    ${mouth}
+    <!-- 볼터치 -->
+    ${blush}
+    <!-- 귀 -->
+    <ellipse cx="17" cy="38" rx="4" ry="5" fill="${c.skin}"/><ellipse cx="53" cy="38" rx="4" ry="5" fill="${c.skin}"/>
+  </svg>`;
+}
+
+// 불타는 서류 SVG
+function createBombSVG() {
+  return `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <!-- 서류 -->
+    <rect x="15" y="20" width="50" height="55" rx="3" fill="#fff8e7" stroke="#caa04e" stroke-width="1.5"/>
+    <rect x="15" y="20" width="50" height="12" rx="3" fill="#f59e0b"/>
+    <text x="40" y="29" text-anchor="middle" font-size="7" font-weight="700" fill="white">품 의 서</text>
+    <!-- 서류 줄 -->
+    <line x1="22" y1="42" x2="58" y2="42" stroke="#d4a373" stroke-width="1.5"/>
+    <line x1="22" y1="49" x2="58" y2="49" stroke="#d4a373" stroke-width="1.5"/>
+    <line x1="22" y1="56" x2="45" y2="56" stroke="#d4a373" stroke-width="1.5"/>
+    <!-- 도장 -->
+    <circle cx="52" cy="62" r="7" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.6"/>
+    <text x="52" y="65" text-anchor="middle" font-size="6" fill="#ef4444" opacity="0.6">반려</text>
+    <!-- 불꽃 -->
+    <ellipse cx="25" cy="18" rx="8" ry="14" fill="#ff6b35" opacity="0.9">
+      <animate attributeName="ry" values="14;17;14" dur="0.3s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="40" cy="14" rx="7" ry="16" fill="#f97316" opacity="0.85">
+      <animate attributeName="ry" values="16;19;16" dur="0.4s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="55" cy="18" rx="8" ry="13" fill="#ff6b35" opacity="0.9">
+      <animate attributeName="ry" values="13;16;13" dur="0.35s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="33" cy="12" rx="5" ry="10" fill="#fbbf24" opacity="0.7">
+      <animate attributeName="ry" values="10;13;10" dur="0.25s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="48" cy="13" rx="5" ry="9" fill="#fbbf24" opacity="0.7">
+      <animate attributeName="ry" values="9;12;9" dur="0.3s" repeatCount="indefinite"/>
+    </ellipse>
+  </svg>`;
+}
+
+// ──────────────────────────────────────────────────────────
+// 게임 상태
+// ──────────────────────────────────────────────────────────
+let playerCount = 0;
+let gamePlayers = [];
+let rand = null;
+let bombAngle = 0;
+
+const ARENA_RADIUS_RATIO = 0.38;
+
+// ──────────────────────────────────────────────────────────
+// 플랫폼 연동
+// ──────────────────────────────────────────────────────────
+let platformConnected = false;
+
+GameSDK.on('init', ({ players, seed }) => {
+  platformConnected = true;
+  gamePlayers = players;
+  playerCount = players.length;
+  rand = GameSDK.prng(seed);
+  document.getElementById('waiting').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+  setupArena();
+});
+
+GameSDK.on('start', () => {
+  runCountdown(() => startRound());
+});
+
+// ──────────────────────────────────────────────────────────
+// 단독 테스트 모드 (플랫폼 init이 2초 내 안 오면 활성화)
+// ──────────────────────────────────────────────────────────
+setTimeout(() => {
+  if (platformConnected) return;
+  document.getElementById('testMode').style.display = 'block';
+  document.getElementById('waitingMsg').textContent = '플랫폼 미연결 — 테스트 모드';
+
+  const selectEl = document.getElementById('playerSelect');
+  const startBtnEl = document.getElementById('startBtn');
+  let selectedCount = 0;
+
+  for (let i = 2; i <= 8; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'player-btn';
+    btn.textContent = i;
+    btn.onclick = () => {
+      selectEl.querySelectorAll('.player-btn').forEach(b => { b.style.borderColor = '#334155'; b.style.background = '#1e293b'; });
+      btn.style.borderColor = '#ff6b35';
+      btn.style.background = '#2d1f0f';
+      selectedCount = i;
+      startBtnEl.style.display = 'block';
+    };
+    selectEl.appendChild(btn);
+  }
+
+  startBtnEl.onclick = () => {
+    if (selectedCount < 2) return;
+    const names = ['강명훈','이서연','박찬영','김태호','정수빈','최유진','한도윤','윤지아'];
+    gamePlayers = [];
+    for (let i = 0; i < selectedCount; i++) {
+      gamePlayers.push({ id: `p${i+1}`, name: names[i] });
+    }
+    playerCount = selectedCount;
+    rand = GameSDK.prng(String(Date.now()));
+    document.getElementById('waiting').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
+    setupArena();
+    runCountdown(() => startRound());
+  };
+}, 2000);
+
+function setupArena() {
+  const arena = document.getElementById('arena');
+  arena.innerHTML = '';
+
+  // 플레이어 배치
+  gamePlayers.forEach((p, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'player-slot';
+    slot.id = `slot-${p.id}`;
+    const angle = (i / gamePlayers.length) * Math.PI * 2 - Math.PI / 2;
+    slot.style.left = `${50 + ARENA_RADIUS_RATIO * 100 * Math.cos(angle)}%`;
+    slot.style.top = `${50 + ARENA_RADIUS_RATIO * 100 * Math.sin(angle)}%`;
+    slot.innerHTML = `
+      <div class="player-avatar" id="avatar-${p.id}">${createCharSVG(i, 'normal')}</div>
+      <div class="player-name">${p.name}</div>
+    `;
+    arena.appendChild(slot);
+  });
+
+  // 폭탄
+  const bomb = document.createElement('div');
+  bomb.className = 'bomb';
+  bomb.id = 'bomb';
+  bomb.innerHTML = createBombSVG();
+  arena.appendChild(bomb);
+}
+
+// ──────────────────────────────────────────────────────────
+// 카운트다운
+// ──────────────────────────────────────────────────────────
+function runCountdown(cb) {
+  const cdEl = document.getElementById('countdown');
+  cdEl.classList.add('active');
+  let count = 3;
+
+  function tick() {
+    if (count > 0) {
+      cdEl.innerHTML = `<span class="cd-num">${count}</span>`;
+      count--;
+      setTimeout(tick, 900);
+    } else {
+      cdEl.innerHTML = `<span class="cd-num" style="color:#f7c948">START!</span>`;
+      setTimeout(() => {
+        cdEl.classList.remove('active');
+        cb();
+      }, 700);
+    }
+  }
+  tick();
+}
+
+// ──────────────────────────────────────────────────────────
+// 폭탄 회전 → 1라운드 → 꽝 결정
+// ──────────────────────────────────────────────────────────
+function startRound() {
+  // 모두 긴장 표정
+  gamePlayers.forEach((p, i) => {
+    document.getElementById(`avatar-${p.id}`).innerHTML = createCharSVG(i, 'scared');
+  });
+
+  const bomb = document.getElementById('bomb');
+  bomb.classList.add('spinning');
+
+  // 누구한테 멈출지 seed 기반 결정
+  const targetIdx = Math.floor(rand() * gamePlayers.length);
+  const targetPlayer = gamePlayers[targetIdx];
+  const targetAngle = (targetIdx / gamePlayers.length) * Math.PI * 2 - Math.PI / 2;
+
+  const totalSpins = 4 + rand() * 4; // 4~8바퀴
+  const totalDuration = 4000 + rand() * 3000; // 4~7초 (서스펜스)
+  const totalAngle = totalSpins * Math.PI * 2 + (targetAngle - bombAngle);
+  const startTime = performance.now();
+  const startAngle = bombAngle;
+
+  function animateBomb(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / totalDuration, 1);
+    const eased = 1 - Math.pow(1 - progress, 4);
+    const currentAngle = startAngle + totalAngle * eased;
+
+    const orbitR = ARENA_RADIUS_RATIO * 0.65;
+    bomb.style.left = (50 + orbitR * 100 * Math.cos(currentAngle)) + '%';
+    bomb.style.top = (50 + orbitR * 100 * Math.sin(currentAngle)) + '%';
+
+    if (progress < 1) {
+      requestAnimationFrame(animateBomb);
+    } else {
+      bombAngle = currentAngle;
+      bomb.classList.remove('spinning');
+
+      // 폭탄 → 타겟 위치로 정확히 이동
+      const slot = document.getElementById(`slot-${targetPlayer.id}`);
+      bomb.style.left = slot.style.left;
+      bomb.style.top = slot.style.top;
+
+      setTimeout(() => showResult(targetPlayer.id), 600);
+    }
+  }
+
+  requestAnimationFrame(animateBomb);
+}
+
+// ──────────────────────────────────────────────────────────
+// 결과 연출
+// ──────────────────────────────────────────────────────────
+function showResult(loserId) {
+  const loserIdx = gamePlayers.findIndex(p => p.id === loserId);
+
+  // 폭발 플래시
+  const explosion = document.getElementById('explosion');
+  explosion.classList.add('active');
+  setTimeout(() => explosion.classList.remove('active'), 800);
+
+  // 서류 파티클
+  spawnPaperParticles(loserId);
+
+  // 패자 처리
+  const loserSlot = document.getElementById(`slot-${loserId}`);
+  loserSlot.classList.add('eliminated');
+  document.getElementById(`avatar-${loserId}`).innerHTML = createCharSVG(loserIdx, 'crying');
+
+  // 생존자 안도 연출
+  setTimeout(() => {
+    gamePlayers.forEach((p, i) => {
+      if (p.id === loserId) return;
+      const s = document.getElementById(`slot-${p.id}`);
+      s.classList.add('safe');
+      document.getElementById(`avatar-${p.id}`).innerHTML = createCharSVG(i, 'relieved');
+
+      const safeText = document.createElement('div');
+      safeText.className = 'safe-text';
+      safeText.textContent = '😮‍💨';
+      s.appendChild(safeText);
+      setTimeout(() => safeText.remove(), 1500);
+      setTimeout(() => s.classList.remove('safe'), 800);
+    });
+  }, 500);
+
+  // submit (패자=1, 나머지=0 → compare:max → 패자 결정)
+  gamePlayers.forEach(p => {
+    GameSDK.submit(p.id, p.id === loserId ? 1 : 0);
+  });
+
+  // 패자 오버레이
+  setTimeout(() => {
+    const overlay = document.getElementById('loserOverlay');
+    document.getElementById('loserAvatarBig').innerHTML = createCharSVG(loserIdx, 'crying');
+    document.getElementById('loserName').textContent = gamePlayers[loserIdx].name;
+    overlay.classList.add('active');
+
+    // 서류 비
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        const papers = ['📋','📄','🧾','📑','✉️','📝','💸','🔥'];
+        for (let j = 0; j < 10; j++) {
+          const p = document.createElement('div');
+          p.className = 'paper-particle';
+          p.textContent = papers[Math.floor(Math.random() * papers.length)];
+          p.style.left = (Math.random() * window.innerWidth) + 'px';
+          p.style.top = '-20px';
+          p.style.animationDuration = (2 + Math.random() * 2) + 's';
+          p.style.animationDelay = (Math.random() * 0.5) + 's';
+          document.body.appendChild(p);
+          setTimeout(() => p.remove(), 5000);
+        }
+      }, i * 500);
+    }
+  }, 2000);
+}
+
+function spawnPaperParticles(playerId) {
+  const slot = document.getElementById(`slot-${playerId}`);
+  const rect = slot.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const papers = ['📋','📄','🧾','📑','✉️','📝','💸'];
+  for (let i = 0; i < 15; i++) {
+    const p = document.createElement('div');
+    p.className = 'paper-particle';
+    p.textContent = papers[Math.floor(Math.random() * papers.length)];
+    p.style.left = (cx + (Math.random() - 0.5) * 100) + 'px';
+    p.style.top = (cy + (Math.random() - 0.5) * 60) + 'px';
+    p.style.animationDuration = (1.5 + Math.random()) + 's';
+    p.style.animationDelay = (Math.random() * 0.3) + 's';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3000);
+  }
+}
+</script>
+</body>
+</html>
