@@ -63,6 +63,8 @@ export function attachIo(io: IOServer, ctx: Ctx): void {
       if (!m) return ack?.({ error: 'no session' });
       try {
         const snap = ctx.mgr.selectGame({ sessionId: m.sessionId, actorId: m.playerId, gameId: parsed.data.gameId });
+        const gameMeta = ctx.registry?.get(parsed.data.gameId);
+        if (gameMeta) snap.game = gameMeta;
         broadcastRoomState(io, snap);
         ack?.({ ok: true });
       } catch (e: unknown) {

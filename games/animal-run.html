@@ -1,1340 +1,614 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <meta name="game:title" content="결재 폭탄 룰렛" />
-    <meta name="game:min-players" content="2" />
-    <meta name="game:max-players" content="8" />
-    <meta
-      name="game:description"
-      content="불타는 품의서가 돌다가 멈추면 그 사람이 결재 담당! 꼴찌에게 폭발!"
-    />
-    <meta name="game:compare" content="max" />
-    <meta name="game:mode" content="shared" />
+  <meta name="game:title" content="애니멀 런">
+  <meta name="game:min-players" content="2">
+  <meta name="game:max-players" content="8">
+  <meta name="game:description" content="귀여운 동물들의 스킬 대전 달리기! 꼴찌로 결승선을 통과하면 결재 담당!">
+  <meta name="game:compare" content="max">
+  <meta name="game:mode" content="shared">
 
-    <title>결재 폭탄 룰렛</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        height: 100%;
-        font-family: "Segoe UI", system-ui, sans-serif;
-        background: #0c0a1a;
-        color: #e2e8f0;
-        overflow: hidden;
-      }
+  <title>애니멀 런</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: #1a472a; color: #e2e8f0; overflow: hidden; }
 
-      /* 대기 */
-      #waiting {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        gap: 1.5rem;
-        animation: fadeIn 0.5s;
-      }
-      #waiting h1 {
-        font-size: 2.2rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #ff6b35, #f7c948);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-      #waiting p {
-        font-size: 1rem;
-        opacity: 0.6;
-      }
-      .waiting-spinner {
-        font-size: 2.5rem;
-        animation: spin 2s linear infinite;
-      }
-      @keyframes spin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      .player-select {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-      .player-btn {
-        width: 3.5rem;
-        height: 3.5rem;
-        border-radius: 50%;
-        border: 3px solid #334155;
-        background: #1e293b;
-        color: #e2e8f0;
-        font-size: 1.3rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      .player-btn:hover {
-        border-color: #ff6b35;
-        background: #2d1f0f;
-        transform: scale(1.1);
-      }
-      .start-btn {
-        margin-top: 1rem;
-        padding: 0.8rem 2.5rem;
-        font-size: 1.1rem;
-        font-weight: 700;
-        border: none;
-        border-radius: 1rem;
-        background: linear-gradient(135deg, #ff6b35, #e8450e);
-        color: white;
-        cursor: pointer;
-        transition: transform 0.2s;
-        display: none;
-      }
-      .start-btn:hover {
-        transform: scale(1.05);
-      }
+    /* ── 대기 화면 ── */
+    #waiting {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; gap: 1.5rem; animation: fadeIn 0.5s;
+    }
+    #waiting h1 { font-size: 2.2rem; font-weight: 800; }
+    #waiting p { font-size: 1rem; opacity: 0.6; }
+    .waiting-spinner { font-size: 2.5rem; animation: bounce 1s infinite alternate; }
+    @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+    .player-select { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+    .player-btn {
+      width: 3.5rem; height: 3.5rem; border-radius: 50%; border: 3px solid #334155;
+      background: #1e293b; color: #e2e8f0; font-size: 1.3rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .player-btn:hover { border-color: #4ade80; background: #14352a; transform: scale(1.1); }
+    .start-btn {
+      margin-top: 1rem; padding: 0.8rem 2.5rem; font-size: 1.1rem; font-weight: 700; border: none; border-radius: 1rem;
+      background: linear-gradient(135deg, #4ade80, #16a34a); color: white; cursor: pointer;
+      transition: transform 0.2s; display: none;
+    }
+    .start-btn:hover { transform: scale(1.05); }
 
-      /* 게임 */
-      #game {
-        display: none;
-        height: 100%;
-        position: relative;
-      }
-      .circle-arena {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: min(80vw, 80vh);
-        height: min(80vw, 80vh);
-        transition: transform 0.5s ease;
-      }
+    /* ── 게임 화면 ── */
+    #game { display: none; height: 100%; position: relative; }
+    .racetrack {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(180deg, #87ceeb 0%, #87ceeb 20%, #4ade80 20%, #22c55e 100%);
+    }
+    .grass-stripes {
+      position: absolute; top: 20%; left: 0; width: 100%; height: 80%;
+      background: repeating-linear-gradient(180deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 60px);
+    }
+    .cloud { position: absolute; font-size: 2rem; opacity: 0.6; animation: cloudDrift 20s linear infinite; }
+    .cloud:nth-child(2) { top: 8%; font-size: 1.5rem; animation-duration: 25s; animation-delay: -8s; }
+    .cloud:nth-child(3) { top: 2%; font-size: 1.8rem; animation-duration: 18s; animation-delay: -15s; }
+    @keyframes cloudDrift { from { left: 110%; } to { left: -10%; } }
+    .finish-line {
+      position: absolute; right: 8%; top: 20%; width: 6px; height: 80%;
+      background: repeating-linear-gradient(180deg, #000 0px, #000 8px, #fff 8px, #fff 16px); z-index: 5;
+    }
+    .finish-flag { position: absolute; right: 6.5%; top: 14%; font-size: 2rem; z-index: 6; }
 
-      /* 플레이어 */
-      .player-slot {
-        position: absolute;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        transform: translate(-50%, -50%);
-        transition: all 0.3s;
-      }
-      .player-avatar {
-        width: 70px;
-        height: 90px;
-        position: relative;
-        transition: all 0.3s;
-      }
-      .player-name {
-        margin-top: 0.3rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        background: rgba(15, 23, 42, 0.8);
-        padding: 0.2rem 0.6rem;
-        border-radius: 0.5rem;
-        white-space: nowrap;
-      }
-      .player-slot.eliminated .player-avatar {
-        opacity: 0.25;
-        filter: grayscale(1);
-      }
-      .player-slot.eliminated .player-name {
-        opacity: 0.3;
-        text-decoration: line-through;
-      }
-      .player-slot.danger .player-avatar {
-        animation: dangerTremble 0.1s infinite;
-      }
-      @keyframes dangerTremble {
-        0%,
-        100% {
-          transform: translateX(0);
-        }
-        25% {
-          transform: translateX(-3px);
-        }
-        75% {
-          transform: translateX(3px);
-        }
-      }
-      .player-slot.sweat .player-avatar {
-        animation: sweatShake 0.15s infinite;
-      }
-      @keyframes sweatShake {
-        0%,
-        100% {
-          transform: translateX(0) rotate(0);
-        }
-        50% {
-          transform: translateX(-2px) rotate(-1deg);
-        }
-      }
+    .lane { position: absolute; left: 0; width: 100%; border-bottom: 1px dashed rgba(255,255,255,0.15); }
 
-      /* 폭탄 */
-      .bomb {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 80px;
-        height: 80px;
-        z-index: 10;
-        filter: drop-shadow(0 0 20px rgba(255, 107, 53, 0.8));
-      }
-      .bomb.spinning {
-        animation: bombPulse 0.3s infinite alternate;
-      }
-      @keyframes bombPulse {
-        from {
-          filter: drop-shadow(0 0 15px rgba(255, 107, 53, 0.6));
-        }
-        to {
-          filter: drop-shadow(0 0 30px rgba(255, 60, 20, 1));
-        }
-      }
+    /* 러너 */
+    .runner {
+      position: absolute; left: 3%; display: flex; flex-direction: column; align-items: center;
+      transition: left 0.05s linear; z-index: 10;
+    }
+    .runner-animal { width: 55px; height: 55px; position: relative; }
+    .runner-name {
+      font-size: 0.65rem; font-weight: 700; background: rgba(0,0,0,0.6);
+      padding: 0.1rem 0.4rem; border-radius: 0.3rem; white-space: nowrap; margin-top: -0.1rem;
+    }
+    .runner-skill {
+      font-size: 0.55rem; font-weight: 600; opacity: 0.7; margin-top: 0.1rem;
+      background: rgba(0,0,0,0.4); padding: 0.1rem 0.3rem; border-radius: 0.2rem;
+    }
+    .runner.running .runner-animal { animation: runBounce 0.3s infinite alternate; }
+    @keyframes runBounce { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-5px) rotate(2deg); } }
+    .runner.stunned .runner-animal { animation: stunSpin 0.3s infinite; filter: brightness(0.6); }
+    @keyframes stunSpin { 0%,100%{ transform: rotate(0); } 50%{ transform: rotate(10deg); } }
+    .runner.boosted .runner-animal { animation: boostGlow 0.2s infinite alternate; }
+    @keyframes boostGlow { from { filter: brightness(1.2) drop-shadow(0 0 6px gold); } to { filter: brightness(1.5) drop-shadow(0 0 12px gold); } }
+    .runner.shielded .runner-animal { filter: drop-shadow(0 0 8px #38bdf8); }
+    .runner.finished .runner-animal { animation: none; }
+    .runner.loser .runner-animal { animation: loserSad 1s infinite; opacity: 0.7; }
+    @keyframes loserSad { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(3px); } }
 
-      /* 불꽃 자국 */
-      .fire-trail {
-        position: absolute;
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 5;
-        animation: trailFade 0.8s forwards;
-      }
-      @keyframes trailFade {
-        0% {
-          opacity: 0.8;
-          transform: scale(1);
-        }
-        100% {
-          opacity: 0;
-          transform: scale(0.1);
-        }
-      }
+    /* 순위 뱃지 */
+    .rank-badge {
+      position: absolute; top: -0.8rem; right: -0.5rem; width: 1.4rem; height: 1.4rem;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 900; color: white; z-index: 11; animation: popIn 0.3s;
+    }
+    @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
-      /* 폭발 */
-      .explosion {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 100;
-        pointer-events: none;
-        display: none;
-      }
-      .explosion.active {
-        display: block;
-        animation: explosionFlash 1s;
-      }
-      @keyframes explosionFlash {
-        0% {
-          background: rgba(255, 107, 53, 0.95);
-        }
-        20% {
-          background: rgba(255, 255, 200, 0.8);
-        }
-        50% {
-          background: rgba(255, 107, 53, 0.5);
-        }
-        100% {
-          background: transparent;
-        }
-      }
+    /* 스킬 이펙트 텍스트 */
+    .skill-popup {
+      position: absolute; z-index: 50; font-size: 0.85rem; font-weight: 800;
+      color: #facc15; text-shadow: 0 0 8px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.5);
+      pointer-events: none; white-space: nowrap; animation: skillPop 1.5s forwards;
+    }
+    @keyframes skillPop {
+      0% { opacity: 1; transform: translateY(0) scale(0.8); }
+      20% { opacity: 1; transform: translateY(-10px) scale(1.1); }
+      100% { opacity: 0; transform: translateY(-40px) scale(0.9); }
+    }
 
-      /* 화면 흔들림 */
-      .screen-shake {
-        animation: shake 0.6s;
-      }
-      @keyframes shake {
-        0%,
-        100% {
-          transform: translate(-50%, -50%);
-        }
-        10% {
-          transform: translate(-52%, -48%);
-        }
-        20% {
-          transform: translate(-48%, -52%);
-        }
-        30% {
-          transform: translate(-53%, -49%);
-        }
-        40% {
-          transform: translate(-47%, -51%);
-        }
-        50% {
-          transform: translate(-51%, -53%);
-        }
-        60% {
-          transform: translate(-49%, -47%);
-        }
-        70% {
-          transform: translate(-52%, -50%);
-        }
-        80% {
-          transform: translate(-48%, -50%);
-        }
-      }
+    /* 스킬 배너 */
+    .skill-banner {
+      position: fixed; top: 2.5rem; left: 50%; transform: translateX(-50%);
+      z-index: 100; padding: 0.5rem 1.5rem; border-radius: 1rem;
+      font-size: 1rem; font-weight: 700; color: white;
+      background: rgba(0,0,0,0.7);
+      animation: bannerSlide 2s forwards; pointer-events: none;
+    }
+    @keyframes bannerSlide {
+      0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+      15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      75% { opacity: 1; }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    }
 
-      /* 서류 파티클 */
-      .paper-particle {
-        position: fixed;
-        z-index: 101;
-        font-size: 1.5rem;
-        pointer-events: none;
-        animation: paperFall 2s forwards;
-      }
-      @keyframes paperFall {
-        0% {
-          opacity: 1;
-          transform: translateY(0) rotate(0) scale(1);
-        }
-        100% {
-          opacity: 0;
-          transform: translateY(100vh) rotate(720deg) scale(0.3);
-        }
-      }
+    .stun-stars {
+      position: absolute; top: -1rem; left: 50%; transform: translateX(-50%);
+      font-size: 0.9rem; animation: starSpin 0.5s infinite linear; pointer-events: none;
+    }
+    @keyframes starSpin { from { transform: translateX(-50%) rotate(0deg); } to { transform: translateX(-50%) rotate(360deg); } }
 
-      /* 안도 */
-      .player-slot.safe .player-avatar {
-        animation: safeRelief 0.8s ease;
-      }
-      @keyframes safeRelief {
-        0% {
-          transform: scale(1);
-        }
-        30% {
-          transform: scale(0.85) translateY(5px);
-        }
-        60% {
-          transform: scale(1.15) translateY(-10px);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-      .safe-text {
-        position: absolute;
-        top: -2rem;
-        font-size: 1.5rem;
-        animation: floatUp 1.5s forwards;
-      }
-      @keyframes floatUp {
-        0% {
-          opacity: 1;
-          transform: translateY(0) scale(0.5);
-        }
-        50% {
-          opacity: 1;
-          transform: translateY(-20px) scale(1.2);
-        }
-        100% {
-          opacity: 0;
-          transform: translateY(-40px) scale(1);
-        }
-      }
+    .teleport-trail {
+      position: absolute; z-index: 9; pointer-events: none;
+      width: 30px; height: 30px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(168,85,247,0.8), transparent);
+      animation: teleportFade 0.5s forwards;
+    }
+    @keyframes teleportFade { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(2); } }
 
-      /* 이벤트 배너 */
-      .event-banner {
-        position: fixed;
-        top: 15%;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 120;
-        padding: 0.8rem 2rem;
-        border-radius: 1rem;
-        font-size: 1.3rem;
-        font-weight: 800;
-        color: white;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        pointer-events: none;
-        animation: bannerPop 2s forwards;
-      }
-      @keyframes bannerPop {
-        0% {
-          opacity: 0;
-          transform: translateX(-50%) scale(0.5) translateY(20px);
-        }
-        15% {
-          opacity: 1;
-          transform: translateX(-50%) scale(1.1) translateY(0);
-        }
-        25% {
-          transform: translateX(-50%) scale(1);
-        }
-        80% {
-          opacity: 1;
-        }
-        100% {
-          opacity: 0;
-          transform: translateX(-50%) translateY(-20px);
-        }
-      }
+    .timer-bar {
+      position: absolute; top: 0; left: 0; width: 100%; height: 4px; z-index: 20; background: rgba(0,0,0,0.3);
+    }
+    .timer-fill {
+      height: 100%; background: linear-gradient(90deg, #4ade80, #facc15, #f43f5e);
+      transition: width 0.1s linear;
+    }
+    .timer-text {
+      position: absolute; top: 6px; right: 1rem; z-index: 20;
+      font-size: 0.85rem; font-weight: 700; opacity: 0.8;
+      background: rgba(0,0,0,0.5); padding: 0.15rem 0.5rem; border-radius: 0.3rem;
+    }
 
-      /* 페이크 멈춤 "!" */
-      .fake-exclaim {
-        position: fixed;
-        top: 40%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 10rem;
-        font-weight: 900;
-        color: #f43f5e;
-        z-index: 130;
-        text-shadow: 0 0 60px rgba(244, 63, 94, 0.8);
-        pointer-events: none;
-        animation: exclaimPop 0.8s forwards;
-      }
-      @keyframes exclaimPop {
-        0% {
-          opacity: 0;
-          transform: translate(-50%, -50%) scale(3);
-        }
-        30% {
-          opacity: 1;
-          transform: translate(-50%, -50%) scale(1);
-        }
-        70% {
-          opacity: 1;
-        }
-        100% {
-          opacity: 0;
-          transform: translate(-50%, -50%) scale(0.8);
-        }
-      }
+    .dust {
+      position: absolute; width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(200,180,150,0.6); pointer-events: none; z-index: 9;
+      animation: dustFade 0.6s forwards;
+    }
+    @keyframes dustFade { 0% { opacity: 1; } 100% { opacity: 0; transform: scale(0.2) translateX(-20px); } }
 
-      /* 줌인 */
-      .circle-arena.zoom-in {
-        transform: translate(-50%, -50%) scale(1.4);
-      }
+    #countdown {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 150; background: rgba(0,0,0,0.6);
+      align-items: center; justify-content: center; font-size: 8rem; font-weight: 900;
+      color: #4ade80; text-shadow: 0 0 40px rgba(74,222,128,0.5);
+    }
+    #countdown.active { display: flex; }
+    .cd-num { animation: cdPop 0.8s; }
+    @keyframes cdPop { 0%{ transform:scale(2);opacity:0; } 50%{ transform:scale(1);opacity:1; } 100%{ transform:scale(1);opacity:0.8; } }
 
-      /* 패자 오버레이 */
-      .loser-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 200;
-        background: rgba(0, 0, 0, 0.85);
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1.5rem;
-      }
-      .loser-overlay.active {
-        display: flex;
-        animation: fadeIn 0.5s;
-      }
-      .loser-overlay h2 {
-        font-size: 2.5rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #ff6b35, #f7c948);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-      .loser-overlay .loser-name {
-        font-size: 3rem;
-        font-weight: 900;
-        color: #f43f5e;
-      }
-      .loser-overlay .loser-msg {
-        font-size: 1.2rem;
-        opacity: 0.7;
-      }
-      .loser-avatar-big {
-        width: 120px;
-        height: 150px;
-        animation: loserShake 0.5s infinite;
-      }
-      @keyframes loserShake {
-        0%,
-        100% {
-          transform: rotate(0);
-        }
-        25% {
-          transform: rotate(-5deg);
-        }
-        75% {
-          transform: rotate(5deg);
-        }
-      }
+    .result-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 200; background: rgba(0,0,0,0.85);
+      flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem;
+    }
+    .result-overlay.active { display: flex; animation: fadeIn 0.5s; }
+    .result-overlay h2 {
+      font-size: 2rem; font-weight: 800;
+      background: linear-gradient(135deg, #4ade80, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .result-board { display: flex; flex-direction: column; gap: 0.5rem; }
+    .result-row {
+      display: flex; align-items: center; gap: 0.8rem; padding: 0.4rem 1.2rem;
+      background: rgba(255,255,255,0.05); border-radius: 0.8rem; font-size: 1rem;
+    }
+    .result-row.loser-row { background: rgba(244,63,94,0.2); border: 2px solid #f43f5e; }
+    .result-rank { font-weight: 900; font-size: 1.2rem; width: 2rem; text-align: center; }
+    .result-animal { width: 36px; height: 36px; }
+    .result-name { font-weight: 600; flex: 1; }
+    .result-tag { font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 0.3rem; font-weight: 700; }
+    .loser-msg { font-size: 1.2rem; color: #f43f5e; font-weight: 700; animation: loserPulse 1s infinite alternate; }
+    @keyframes loserPulse { from { opacity: 0.7; } to { opacity: 1; transform: scale(1.05); } }
 
-      /* 카운트다운 */
-      #countdown {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 150;
-        background: rgba(0, 0, 0, 0.7);
-        align-items: center;
-        justify-content: center;
-        font-size: 8rem;
-        font-weight: 900;
-        color: #ff6b35;
-        text-shadow: 0 0 40px rgba(255, 107, 53, 0.5);
-      }
-      #countdown.active {
-        display: flex;
-      }
-      .cd-num {
-        animation: cdPop 0.8s;
-      }
-      @keyframes cdPop {
-        0% {
-          transform: scale(2);
-          opacity: 0;
-        }
-        50% {
-          transform: scale(1);
-          opacity: 1;
-        }
-        100% {
-          transform: scale(1);
-          opacity: 0.8;
-        }
-      }
+    .game-header {
+      position: absolute; top: 0.5rem; left: 50%; transform: translateX(-50%);
+      text-align: center; z-index: 15; background: rgba(0,0,0,0.4); padding: 0.2rem 1rem; border-radius: 1rem;
+    }
+    .game-header h1 { font-size: 0.9rem; font-weight: 700; opacity: 0.8; }
 
-      .game-header {
-        position: absolute;
-        top: 1rem;
-        left: 50%;
-        transform: translateX(-50%);
-        text-align: center;
-        z-index: 5;
-      }
-      .game-header h1 {
-        font-size: 1.3rem;
-        font-weight: 700;
-        opacity: 0.4;
-      }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
 
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
+<div id="waiting">
+  <h1>애니멀 런</h1>
+  <div class="waiting-spinner">🐾</div>
+  <p id="waitingMsg">플레이어 대기 중…</p>
+  <div id="testMode" style="margin-top:1rem; display:none;">
+    <p style="font-size:0.85rem; opacity:0.7; margin-bottom:0.8rem;">테스트 모드 — 인원 수를 선택하세요</p>
+    <div class="player-select" id="playerSelect"></div>
+    <button class="start-btn" id="startBtn">게임 시작!</button>
+  </div>
+</div>
+
+<div id="game">
+  <div class="racetrack">
+    <div class="grass-stripes"></div>
+    <div class="cloud" style="top:5%">☁️</div>
+    <div class="cloud">☁️</div>
+    <div class="cloud">⛅</div>
+    <div class="finish-line"></div>
+    <div class="finish-flag">🏁</div>
+  </div>
+  <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+  <div class="timer-text" id="timerText"></div>
+  <div id="lanes"></div>
+</div>
+
+<div id="countdown"></div>
+<div class="result-overlay" id="resultOverlay">
+  <h2>레이스 결과</h2>
+  <div class="result-board" id="resultBoard"></div>
+  <div class="loser-msg" id="loserMsg"></div>
+</div>
+
+<script>
+const GameSDK = (() => {
+  let me = null, players = [], sessionId = null, seed = null;
+  const submitted = new Set();
+  const handlers = { init: null, start: null, outcome: null };
+  function send(msg) { window.parent.postMessage(msg, '*'); }
+  function on(type, fn) { handlers[type] = fn; }
+  window.addEventListener('message', (e) => {
+    const msg = e.data;
+    if (!msg || !msg.type) return;
+    if (msg.type === 'init') { me = msg.me; players = msg.players; sessionId = msg.sessionId; seed = msg.seed; handlers.init?.({ me, players, sessionId, seed }); }
+    else if (msg.type === 'start') { handlers.start?.(); }
+    else if (msg.type === 'outcome') { handlers.outcome?.({ loserId: msg.loserId, results: msg.results }); }
+  });
+  function submit(playerId, value) {
+    if (submitted.has(playerId)) return;
+    if (typeof value !== 'number' || Number.isNaN(value)) return;
+    submitted.add(playerId); send({ type: 'submit', playerId, value });
+  }
+  function prng(s) {
+    let a = 0; const str = s || seed || String(Date.now());
+    for (let i = 0; i < str.length; i++) a = (a * 31 + str.charCodeAt(i)) | 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  return { on, submit, prng, state: () => ({ me, players, sessionId, seed }) };
+})();
+
+const ANIMALS = [
+  { name: '고양이', emoji: '🐱', color: '#f97316', skill: { name: '날카로운 발톱', icon: '🐾', type: 'stun_one', desc: '1등 2.5초 기절' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="38" rx="16" ry="14" fill="${c}"/><circle cx="30" cy="22" r="12" fill="${c}"/><polygon points="20,14 18,2 26,10" fill="${c}"/><polygon points="40,14 42,2 34,10" fill="${c}"/><ellipse cx="25" cy="21" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="35" cy="21" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="26" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="36" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="30" cy="26" rx="2" ry="1.5" fill="#f9a8d4"/><path d="M28 28 Q30 30 32 28" stroke="#1a1a2e" stroke-width="1" fill="none"/><ellipse cx="22" cy="52" rx="5" ry="4" fill="${c}"/><ellipse cx="38" cy="52" rx="5" ry="4" fill="${c}"/></svg>` },
+  { name: '강아지', emoji: '🐶', color: '#92400e', skill: { name: '돌진!', icon: '💨', type: 'boost_self', desc: '3초간 2.5배속' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="38" rx="16" ry="14" fill="${c}"/><circle cx="30" cy="22" r="12" fill="${c}"/><ellipse cx="17" cy="18" rx="7" ry="10" fill="#b45309" transform="rotate(-15 17 18)"/><ellipse cx="43" cy="18" rx="7" ry="10" fill="#b45309" transform="rotate(15 43 18)"/><ellipse cx="25" cy="21" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="35" cy="21" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="26" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="36" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="30" cy="27" rx="3" ry="2" fill="#1a1a2e"/><ellipse cx="22" cy="52" rx="5" ry="4" fill="${c}"/><ellipse cx="38" cy="52" rx="5" ry="4" fill="${c}"/></svg>` },
+  { name: '토끼', emoji: '🐰', color: '#e879f9', skill: { name: '순간이동', icon: '✨', type: 'teleport', desc: '앞으로 5% 점프' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="40" rx="14" ry="13" fill="${c}"/><circle cx="30" cy="26" r="11" fill="${c}"/><ellipse cx="23" cy="8" rx="4" ry="14" fill="${c}"/><ellipse cx="37" cy="8" rx="4" ry="14" fill="${c}"/><ellipse cx="23" cy="8" rx="2.5" ry="10" fill="#fda4af"/><ellipse cx="37" cy="8" rx="2.5" ry="10" fill="#fda4af"/><ellipse cx="25" cy="24" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="35" cy="24" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="26" cy="23" rx="1.2" ry="1.2" fill="white"/><ellipse cx="36" cy="23" rx="1.2" ry="1.2" fill="white"/><ellipse cx="30" cy="30" rx="2" ry="1.5" fill="#fda4af"/><ellipse cx="22" cy="53" rx="5" ry="3.5" fill="${c}"/><ellipse cx="38" cy="53" rx="5" ry="3.5" fill="${c}"/></svg>` },
+  { name: '거북이', emoji: '🐢', color: '#14b8a6', skill: { name: '등껍질 방어', icon: '🛡️', type: 'shield', desc: '1.5초간 스킬 면역' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="36" rx="18" ry="15" fill="#166534"/><ellipse cx="30" cy="35" rx="16" ry="13" fill="${c}"/><path d="M22 30 L30 24 L38 30 L34 38 L26 38 Z" fill="#0d9488" opacity="0.5"/><circle cx="38" cy="22" r="8" fill="#86efac"/><ellipse cx="36" cy="21" rx="2" ry="2.5" fill="#1a1a2e"/><ellipse cx="42" cy="21" rx="2" ry="2.5" fill="#1a1a2e"/><path d="M38 25 Q40 27 42 25" stroke="#1a1a2e" stroke-width="1" fill="none"/><ellipse cx="16" cy="44" rx="5" ry="3" fill="#86efac"/><ellipse cx="44" cy="44" rx="5" ry="3" fill="#86efac"/></svg>` },
+  { name: '햄스터', emoji: '🐹', color: '#fb923c', skill: { name: '해바라기씨 투척', icon: '🌻', type: 'slow_one', desc: '1등 3초 감속' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="36" rx="17" ry="16" fill="${c}"/><ellipse cx="30" cy="38" rx="12" ry="10" fill="#fed7aa"/><circle cx="30" cy="24" r="13" fill="${c}"/><ellipse cx="18" cy="16" rx="5" ry="5" fill="${c}"/><ellipse cx="42" cy="16" rx="5" ry="5" fill="${c}"/><ellipse cx="18" cy="16" rx="3" ry="3" fill="#fda4af"/><ellipse cx="42" cy="16" rx="3" ry="3" fill="#fda4af"/><ellipse cx="25" cy="23" rx="3" ry="3" fill="#1a1a2e"/><ellipse cx="35" cy="23" rx="3" ry="3" fill="#1a1a2e"/><ellipse cx="26" cy="22" rx="1.2" ry="1.2" fill="white"/><ellipse cx="36" cy="22" rx="1.2" ry="1.2" fill="white"/><ellipse cx="30" cy="28" rx="2" ry="1.5" fill="#f9a8d4"/><ellipse cx="22" cy="52" rx="4" ry="3" fill="${c}"/><ellipse cx="38" cy="52" rx="4" ry="3" fill="${c}"/></svg>` },
+  { name: '펭귄', emoji: '🐧', color: '#1e293b', skill: { name: '빙판길', icon: '🧊', type: 'slow_all', desc: '전원 3초 감속 + 자신 부스트' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="36" rx="15" ry="18" fill="${c}"/><ellipse cx="30" cy="38" rx="10" ry="14" fill="white"/><circle cx="30" cy="20" r="11" fill="${c}"/><ellipse cx="25" cy="19" rx="3" ry="3" fill="white"/><ellipse cx="35" cy="19" rx="3" ry="3" fill="white"/><ellipse cx="25" cy="19" rx="2" ry="2.5" fill="#1a1a2e"/><ellipse cx="35" cy="19" rx="2" ry="2.5" fill="#1a1a2e"/><polygon points="30,23 27,28 33,28" fill="#f97316"/><ellipse cx="14" cy="36" rx="4" ry="8" fill="${c}" transform="rotate(15 14 36)"/><ellipse cx="46" cy="36" rx="4" ry="8" fill="${c}" transform="rotate(-15 46 36)"/><ellipse cx="24" cy="54" rx="5" ry="2.5" fill="#f97316"/><ellipse cx="36" cy="54" rx="5" ry="2.5" fill="#f97316"/></svg>` },
+  { name: '여우', emoji: '🦊', color: '#ea580c', skill: { name: '꾀', icon: '🔄', type: 'swap_ahead', desc: '바로 앞 주자와 위치 교환' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="38" rx="14" ry="14" fill="${c}"/><circle cx="30" cy="24" r="12" fill="${c}"/><polygon points="19,16 14,0 26,12" fill="${c}"/><polygon points="41,16 46,0 34,12" fill="${c}"/><polygon points="19,16 16,4 25,12" fill="#fed7aa"/><polygon points="41,16 44,4 35,12" fill="#fed7aa"/><ellipse cx="25" cy="22" rx="2.5" ry="3" fill="#1a1a2e"/><ellipse cx="35" cy="22" rx="2.5" ry="3" fill="#1a1a2e"/><ellipse cx="26" cy="21" rx="1" ry="1" fill="white"/><ellipse cx="36" cy="21" rx="1" ry="1" fill="white"/><ellipse cx="30" cy="27" rx="2" ry="1.5" fill="#1a1a2e"/><ellipse cx="22" cy="52" rx="5" ry="3.5" fill="${c}"/><ellipse cx="38" cy="52" rx="5" ry="3.5" fill="${c}"/></svg>` },
+  { name: '곰', emoji: '🐻', color: '#78350f', skill: { name: '포효!', icon: '🔊', type: 'stun_top', desc: '상위 2명 2.5초 기절' },
+    body: (c) => `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><ellipse cx="30" cy="38" rx="17" ry="16" fill="${c}"/><circle cx="30" cy="22" r="13" fill="${c}"/><circle cx="18" cy="13" r="6" fill="${c}"/><circle cx="42" cy="13" r="6" fill="${c}"/><circle cx="18" cy="13" r="3.5" fill="#a16207"/><circle cx="42" cy="13" r="3.5" fill="#a16207"/><ellipse cx="25" cy="21" rx="3" ry="3" fill="#1a1a2e"/><ellipse cx="35" cy="21" rx="3" ry="3" fill="#1a1a2e"/><ellipse cx="26" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="36" cy="20" rx="1" ry="1" fill="white"/><ellipse cx="30" cy="27" rx="3" ry="2.5" fill="#a16207"/><ellipse cx="22" cy="54" rx="6" ry="3.5" fill="${c}"/><ellipse cx="38" cy="54" rx="6" ry="3.5" fill="${c}"/></svg>` },
+];
+
+let playerCount = 0, gamePlayers = [], rand = null;
+let runners = [];
+const FINISH_LINE = 85;
+const RACE_DURATION = 20000;
+const BASE_SPEED = 4.1;
+
+let platformConnected = false;
+
+GameSDK.on('init', ({ players, seed }) => {
+  platformConnected = true;
+  gamePlayers = players;
+  playerCount = players.length;
+  rand = GameSDK.prng(seed);
+  document.getElementById('waitingMsg').textContent = `${players.length}명 준비 완료 — 호스트 시작 대기 중…`;
+});
+
+GameSDK.on('start', () => {
+  document.getElementById('waiting').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+  setupRace();
+  runCountdown(() => startRace());
+});
+
+// 테스트 모드 (플랫폼 미연결)
+setTimeout(() => {
+  if (platformConnected) return;
+  document.getElementById('waitingMsg').textContent = '플랫폼 미연결 — 테스트 모드';
+  const testModeEl = document.getElementById('testMode');
+  testModeEl.style.display = 'block';
+  const selectEl = document.getElementById('playerSelect');
+  const startBtnEl = document.getElementById('startBtn');
+  let sel = 0;
+  for (let i = 2; i <= 8; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'player-btn'; btn.textContent = i;
+    btn.onclick = () => {
+      selectEl.querySelectorAll('.player-btn').forEach(b => { b.style.borderColor='#334155'; b.style.background='#1e293b'; });
+      btn.style.borderColor='#4ade80'; btn.style.background='#14352a'; sel = i; startBtnEl.style.display='block';
+    };
+    selectEl.appendChild(btn);
+  }
+  startBtnEl.onclick = () => {
+    if (sel < 2) return;
+    const names = ['강명훈','이서연','박찬영','김태호','정수빈','최유진','한도윤','윤지아'];
+    gamePlayers = []; for (let i = 0; i < sel; i++) gamePlayers.push({ id:`p${i+1}`, name: names[i] });
+    playerCount = sel; rand = GameSDK.prng(String(Date.now()));
+    document.getElementById('waiting').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
+    setupRace(); runCountdown(() => startRace());
+  };
+}, 2000);
+
+function setupRace() {
+  const lanesEl = document.getElementById('lanes');
+  lanesEl.innerHTML = '';
+  runners = [];
+
+  const pool = [...Array(ANIMALS.length).keys()];
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rand()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+
+  const laneH = 80 / playerCount;
+
+  gamePlayers.forEach((p, i) => {
+    const ai = pool[i % pool.length];
+    const animal = ANIMALS[ai];
+    const speedVar = 0.85 + rand() * 0.3;
+
+    runners.push({
+      id: p.id, name: p.name, animalIdx: ai, progress: 3,
+      baseSpeed: BASE_SPEED * speedVar,
+      skillCooldown: 4000 + rand() * 2000,
+      nextSkill: 2000 + rand() * 2000,
+      stunUntil: 0, boostUntil: 0, slowUntil: 0, shieldUntil: 0,
+      finished: false, rank: 0, finishTime: 0,
+    });
+
+    const laneY = 20 + i * laneH + laneH / 2;
+    const el = document.createElement('div');
+    el.className = 'runner'; el.id = `runner-${p.id}`;
+    el.style.top = `${laneY}%`; el.style.transform = 'translateY(-50%)';
+    el.innerHTML = `
+      <div class="runner-animal" id="animal-${p.id}">${animal.body(animal.color)}</div>
+      <div class="runner-name">${animal.emoji} ${p.name}</div>
+      <div class="runner-skill">${animal.skill.icon} ${animal.skill.name}</div>
+    `;
+    lanesEl.appendChild(el);
+
+    if (i < playerCount - 1) {
+      const lane = document.createElement('div');
+      lane.className = 'lane'; lane.style.top = `${20 + (i+1) * laneH}%`;
+      lanesEl.appendChild(lane);
+    }
+  });
+}
+
+function runCountdown(cb) {
+  const el = document.getElementById('countdown');
+  el.classList.add('active');
+  let c = 3;
+  function tick() {
+    if (c > 0) { el.innerHTML = `<span class="cd-num">${c}</span>`; c--; setTimeout(tick, 900); }
+    else { el.innerHTML = `<span class="cd-num" style="color:#facc15">GO!</span>`; setTimeout(() => { el.classList.remove('active'); cb(); }, 600); }
+  }
+  tick();
+}
+
+function executeSkill(r, elapsed) {
+  const animal = ANIMALS[r.animalIdx];
+  const skill = animal.skill;
+  const others = runners.filter(x => x.id !== r.id && !x.finished);
+  if (others.length === 0) return;
+
+  showBanner(`${animal.emoji} ${r.name}의 ${skill.icon} ${skill.name}!`);
+  showSkillPopup(r.id, `${skill.icon} ${skill.name}`);
+
+  switch (skill.type) {
+    case 'stun_one': {
+      const sorted = [...others].sort((a,b) => b.progress - a.progress);
+      const target = sorted[0];
+      if (!target) break;
+      if (target.shieldUntil > elapsed) { showSkillPopup(target.id, '🛡️ 방어!'); break; }
+      target.stunUntil = elapsed + 2500;
+      showSkillPopup(target.id, '😵 기절!');
+      break;
+    }
+    case 'boost_self':
+      r.boostUntil = elapsed + 3000;
+      break;
+    case 'teleport': {
+      const oldProg = r.progress;
+      r.progress = Math.min(r.progress + 5, FINISH_LINE - 1);
+      spawnTeleportTrail(r.id, oldProg);
+      break;
+    }
+    case 'shield':
+      r.shieldUntil = elapsed + 1500;
+      break;
+    case 'slow_one': {
+      const sorted = [...others].sort((a,b) => b.progress - a.progress);
+      const target = sorted[0];
+      if (!target) break;
+      if (target.shieldUntil > elapsed) { showSkillPopup(target.id, '🛡️ 방어!'); break; }
+      target.slowUntil = elapsed + 3000;
+      showSkillPopup(target.id, '🌻 감속!');
+      break;
+    }
+    case 'slow_all':
+      others.forEach(t => {
+        if (t.shieldUntil > elapsed) { showSkillPopup(t.id, '🛡️ 방어!'); return; }
+        t.slowUntil = elapsed + 3000;
+        showSkillPopup(t.id, '🧊 빙판!');
+      });
+      r.boostUntil = elapsed + 2000;
+      break;
+    case 'swap_ahead': {
+      const ahead = others.filter(x => x.progress > r.progress).sort((a,b) => a.progress - b.progress);
+      const target = ahead[0];
+      if (target) {
+        if (target.shieldUntil > elapsed) { showSkillPopup(target.id, '🛡️ 방어!'); break; }
+        const tmp = r.progress; r.progress = target.progress; target.progress = tmp;
+        showSkillPopup(target.id, '🔄 교환!');
+        spawnTeleportTrail(r.id, tmp);
+        spawnTeleportTrail(target.id, r.progress);
       }
-    </style>
-  </head>
-  <body>
-    <div id="waiting">
-      <h1>결재 폭탄 룰렛</h1>
-      <div class="waiting-spinner">📋</div>
-      <p id="waitingMsg">플레이어 대기 중…</p>
-      <div id="testMode" style="margin-top: 1rem; display: none">
-        <p style="font-size: 0.85rem; opacity: 0.7; margin-bottom: 0.8rem">
-          테스트 모드 — 인원 수를 선택하세요
-        </p>
-        <div class="player-select" id="playerSelect"></div>
-        <button class="start-btn" id="startBtn">게임 시작!</button>
+      break;
+    }
+    case 'stun_top': {
+      const sorted = [...others].sort((a,b) => b.progress - a.progress);
+      sorted.slice(0, 2).forEach(t => {
+        if (t.shieldUntil > elapsed) { showSkillPopup(t.id, '🛡️ 방어!'); return; }
+        t.stunUntil = elapsed + 2500;
+        showSkillPopup(t.id, '😵 기절!');
+      });
+      break;
+    }
+  }
+}
+
+let raceStart = 0, finishCount = 0, lastFrame = 0;
+
+function startRace() {
+  raceStart = performance.now(); lastFrame = raceStart; finishCount = 0;
+  runners.forEach(r => document.getElementById(`runner-${r.id}`).classList.add('running'));
+  requestAnimationFrame(raceLoop);
+}
+
+function raceLoop(now) {
+  const elapsed = now - raceStart;
+  const dt = (now - lastFrame) / 1000;
+  lastFrame = now;
+
+  const remain = Math.max(0, RACE_DURATION - elapsed);
+  document.getElementById('timerText').textContent = Math.ceil(remain / 1000) + 's';
+  document.getElementById('timerFill').style.width = ((RACE_DURATION - remain) / RACE_DURATION * 100) + '%';
+
+  let allFinished = true;
+
+  runners.forEach(r => {
+    if (r.finished) return;
+    allFinished = false;
+
+    const el = document.getElementById(`runner-${r.id}`);
+    const isStunned = elapsed < r.stunUntil;
+    const isBoosted = elapsed < r.boostUntil;
+    const isSlowed = elapsed < r.slowUntil;
+    const isShielded = elapsed < r.shieldUntil;
+
+    el.classList.toggle('stunned', isStunned);
+    el.classList.toggle('boosted', isBoosted && !isStunned);
+    el.classList.toggle('shielded', isShielded);
+    el.classList.toggle('running', !isStunned && !isBoosted);
+
+    let stars = el.querySelector('.stun-stars');
+    if (isStunned && !stars) {
+      stars = document.createElement('div');
+      stars.className = 'stun-stars'; stars.textContent = '⭐💫';
+      el.querySelector('.runner-animal').appendChild(stars);
+    } else if (!isStunned && stars) { stars.remove(); }
+
+    if (elapsed > r.nextSkill && !isStunned) {
+      executeSkill(r, elapsed);
+      r.nextSkill = elapsed + r.skillCooldown + rand() * 2500;
+    }
+
+    if (!isStunned) {
+      let mul = 1;
+      if (isSlowed) mul *= 0.4;
+      if (isBoosted) mul *= 2.5;
+      r.progress += r.baseSpeed * mul * dt;
+      if (Math.random() < 0.06) spawnDust(r.id, r.progress);
+    }
+
+    if (elapsed > RACE_DURATION && !isStunned) {
+      r.progress += 5 * dt;
+    }
+
+    if (r.progress >= FINISH_LINE) {
+      r.progress = FINISH_LINE;
+      r.finished = true;
+      r.finishTime = elapsed;
+      finishCount++; r.rank = finishCount;
+      el.className = 'runner finished';
+      el.style.left = FINISH_LINE + '%';
+      const badge = document.createElement('div');
+      badge.className = 'rank-badge';
+      badge.style.background = ['#facc15','#94a3b8','#cd7f32'][r.rank-1] || '#64748b';
+      badge.textContent = r.rank;
+      el.querySelector('.runner-animal').appendChild(badge);
+      if (finishCount === runners.length) { el.className = 'runner loser'; }
+      return;
+    }
+
+    el.style.left = r.progress + '%';
+  });
+
+  if (allFinished) { setTimeout(showResults, 1000); return; }
+  requestAnimationFrame(raceLoop);
+}
+
+function showBanner(text) {
+  const b = document.createElement('div');
+  b.className = 'skill-banner'; b.textContent = text;
+  document.body.appendChild(b);
+  setTimeout(() => b.remove(), 2200);
+}
+
+function showSkillPopup(playerId, text) {
+  const el = document.getElementById(`runner-${playerId}`);
+  if (!el) return;
+  const p = document.createElement('div');
+  p.className = 'skill-popup'; p.textContent = text;
+  p.style.left = el.style.left; p.style.top = el.style.top;
+  document.getElementById('lanes').appendChild(p);
+  setTimeout(() => p.remove(), 1500);
+}
+
+function spawnTeleportTrail(playerId, fromProgress) {
+  const el = document.getElementById(`runner-${playerId}`);
+  if (!el) return;
+  for (let i = 0; i < 5; i++) {
+    const t = document.createElement('div');
+    t.className = 'teleport-trail';
+    t.style.left = (fromProgress + i * 2) + '%'; t.style.top = el.style.top;
+    document.getElementById('lanes').appendChild(t);
+    setTimeout(() => t.remove(), 600);
+  }
+}
+
+function spawnDust(playerId, progress) {
+  const el = document.getElementById(`runner-${playerId}`);
+  if (!el) return;
+  const d = document.createElement('div');
+  d.className = 'dust';
+  d.style.left = (progress - 1) + '%'; d.style.top = el.style.top;
+  d.style.width = d.style.height = (4 + Math.random()*5) + 'px';
+  document.getElementById('lanes').appendChild(d);
+  setTimeout(() => d.remove(), 600);
+}
+
+function showResults() {
+  const sorted = [...runners].sort((a,b) => a.rank - b.rank);
+  const loser = sorted[sorted.length - 1];
+
+  sorted.forEach(r => GameSDK.submit(r.id, r.rank));
+
+  const board = document.getElementById('resultBoard');
+  board.innerHTML = '';
+  const medals = ['🥇','🥈','🥉'];
+  sorted.forEach((r, i) => {
+    const animal = ANIMALS[r.animalIdx];
+    const isLoser = r.id === loser.id;
+    const row = document.createElement('div');
+    row.className = 'result-row' + (isLoser ? ' loser-row' : '');
+    row.innerHTML = `
+      <div class="result-rank">${medals[i] || (i+1)}</div>
+      <div class="result-animal">${animal.body(animal.color)}</div>
+      <div class="result-name">${animal.emoji} ${r.name}</div>
+      <div class="result-tag" style="background:${isLoser?'#f43f5e':'rgba(74,222,128,0.2)'}; color:${isLoser?'white':'#4ade80'}">
+        ${isLoser ? '꽝! 결재 담당' : '세이프'}
       </div>
-    </div>
+    `;
+    board.appendChild(row);
+  });
 
-    <div id="game">
-      <div class="game-header"><h1>결재 폭탄 룰렛</h1></div>
-      <div class="circle-arena" id="arena"></div>
-    </div>
-
-    <div class="explosion" id="explosion"></div>
-    <div id="countdown"></div>
-    <div class="loser-overlay" id="loserOverlay">
-      <h2>품의서 폭탄 명중!</h2>
-      <div id="loserAvatarBig" class="loser-avatar-big"></div>
-      <div class="loser-name" id="loserName"></div>
-      <div class="loser-msg">결재 상신은 당신의 몫입니다 📋</div>
-    </div>
-
-    <script>
-      // ══════════════════════════════════════════════════════════
-      // GameSDK
-      // ══════════════════════════════════════════════════════════
-      const GameSDK = (() => {
-        let me = null,
-          players = [],
-          sessionId = null,
-          seed = null;
-        const submitted = new Set();
-        const handlers = { init: null, start: null, outcome: null };
-        function send(msg) {
-          window.parent.postMessage(msg, "*");
-        }
-        function on(type, fn) {
-          handlers[type] = fn;
-        }
-        window.addEventListener("message", (e) => {
-          const msg = e.data;
-          if (!msg || !msg.type) return;
-          if (msg.type === "init") {
-            me = msg.playerId;
-            players = msg.players;
-            sessionId = msg.sessionId;
-            seed = msg.seed;
-            handlers.init?.({ me, players, sessionId, seed });
-            send({ type: "ready" });
-          } else if (msg.type === "start") {
-            handlers.start?.();
-          } else if (msg.type === "outcome") {
-            handlers.outcome?.({ loserId: msg.loserId, results: msg.results });
-          }
-        });
-        function submit(pid, val) {
-          if (submitted.has(pid)) return;
-          if (typeof val !== "number" || Number.isNaN(val)) return;
-          submitted.add(pid);
-          send({ type: "submit", playerId: pid, value: val });
-        }
-        function prng(s) {
-          let a = 0;
-          const str = s || seed || String(Date.now());
-          for (let i = 0; i < str.length; i++)
-            a = (a * 31 + str.charCodeAt(i)) | 0;
-          return function () {
-            a |= 0;
-            a = (a + 0x6d2b79f5) | 0;
-            let t = Math.imul(a ^ (a >>> 15), 1 | a);
-            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-          };
-        }
-        return {
-          on,
-          submit,
-          prng,
-          state: () => ({ me, players, sessionId, seed }),
-        };
-      })();
-
-      // ══════════════════════════════════════════════════════════
-      // 사운드 엔진 (Web Audio API — iframe allow-scripts에서 동작)
-      // ══════════════════════════════════════════════════════════
-      let audioCtx = null;
-      function initAudio() {
-        try {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) {}
-      }
-      function playTick(pitch, vol) {
-        if (!audioCtx) return;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = "square";
-        osc.frequency.value = pitch || 800;
-        gain.gain.setValueAtTime(vol || 0.15, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(
-          0.001,
-          audioCtx.currentTime + 0.08,
-        );
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.08);
-      }
-      function playBoom() {
-        if (!audioCtx) return;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = "sawtooth";
-        osc.frequency.value = 80;
-        osc.frequency.exponentialRampToValueAtTime(
-          20,
-          audioCtx.currentTime + 0.5,
-        );
-        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(
-          0.001,
-          audioCtx.currentTime + 0.5,
-        );
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.5);
-      }
-      function playHeartbeat(rate) {
-        if (!audioCtx) return;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = 60;
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(
-          0.001,
-          audioCtx.currentTime + 0.15,
-        );
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.15);
-      }
-
-      // ══════════════════════════════════════════════════════════
-      // SVG 캐릭터
-      // ══════════════════════════════════════════════════════════
-      const CHAR_COLORS = [
-        { hair: "#2d1b69", suit: "#3b82f6", skin: "#fbbf7c", tie: "#ef4444" },
-        { hair: "#8b4513", suit: "#10b981", skin: "#f5d0a9", tie: "#f59e0b" },
-        { hair: "#1a1a2e", suit: "#8b5cf6", skin: "#fbbf7c", tie: "#06b6d4" },
-        { hair: "#d4a373", suit: "#ec4899", skin: "#f5d0a9", tie: "#84cc16" },
-        { hair: "#6b2f1a", suit: "#f97316", skin: "#fbbf7c", tie: "#6366f1" },
-        { hair: "#374151", suit: "#14b8a6", skin: "#f5d0a9", tie: "#f43f5e" },
-        { hair: "#92400e", suit: "#0ea5e9", skin: "#fbbf7c", tie: "#a855f7" },
-        { hair: "#1e3a5f", suit: "#e11d48", skin: "#f5d0a9", tie: "#22c55e" },
-      ];
-
-      function createCharSVG(index, exp) {
-        const c = CHAR_COLORS[index % CHAR_COLORS.length];
-        exp = exp || "normal";
-        let eyes, mouth;
-        if (exp === "normal") {
-          eyes = `<ellipse cx="28" cy="36" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="42" cy="36" rx="3" ry="3.5" fill="#1a1a2e"/><ellipse cx="29" cy="35" rx="1" ry="1" fill="white"/><ellipse cx="43" cy="35" rx="1" ry="1" fill="white"/>`;
-          mouth = `<path d="M31 44 Q35 47 39 44" stroke="#1a1a2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
-        } else if (exp === "scared") {
-          eyes = `<ellipse cx="28" cy="36" rx="4" ry="5" fill="#1a1a2e"/><ellipse cx="42" cy="36" rx="4" ry="5" fill="#1a1a2e"/><ellipse cx="29" cy="34" rx="1.5" ry="1.5" fill="white"/><ellipse cx="43" cy="34" rx="1.5" ry="1.5" fill="white"/>`;
-          mouth = `<ellipse cx="35" cy="46" rx="4" ry="3" fill="#1a1a2e"/>`;
-        } else if (exp === "relieved") {
-          eyes = `<path d="M25 36 Q28 33 31 36" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M39 36 Q42 33 45 36" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/>`;
-          mouth = `<path d="M30 43 Q35 48 40 43" stroke="#1a1a2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
-        } else if (exp === "crying") {
-          eyes = `<path d="M25 34 Q28 37 31 34" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M39 34 Q42 37 45 34" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="27" cy="40" r="1.5" fill="#60a5fa" opacity="0.7"><animate attributeName="cy" values="40;48" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.7;0" dur="1s" repeatCount="indefinite"/></circle><circle cx="43" cy="40" r="1.5" fill="#60a5fa" opacity="0.7"><animate attributeName="cy" values="40;48" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.7;0" dur="1s" repeatCount="indefinite"/></circle>`;
-          mouth = `<path d="M30 46 Q35 42 40 46" stroke="#1a1a2e" stroke-width="2" fill="none" stroke-linecap="round"/>`;
-        } else if (exp === "terrified") {
-          eyes = `<ellipse cx="28" cy="35" rx="5" ry="6" fill="#1a1a2e"/><ellipse cx="42" cy="35" rx="5" ry="6" fill="#1a1a2e"/><ellipse cx="29" cy="33" rx="2" ry="2" fill="white"/><ellipse cx="43" cy="33" rx="2" ry="2" fill="white"/>`;
-          mouth = `<ellipse cx="35" cy="47" rx="5" ry="4" fill="#1a1a2e"/>`;
-        }
-        const blush =
-          exp === "relieved" || exp === "scared" || exp === "terrified"
-            ? `<ellipse cx="23" cy="42" rx="4" ry="2.5" fill="#ff9999" opacity="0.4"/><ellipse cx="47" cy="42" rx="4" ry="2.5" fill="#ff9999" opacity="0.4"/>`
-            : "";
-        // 땀방울 (scared, terrified)
-        const sweat =
-          exp === "terrified"
-            ? `<circle cx="52" cy="30" r="2.5" fill="#60a5fa" opacity="0.6"><animate attributeName="cy" values="30;38" dur="0.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0" dur="0.8s" repeatCount="indefinite"/></circle>`
-            : "";
-        return `<svg viewBox="0 0 70 90" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="55" width="34" height="35" rx="8" fill="${c.suit}"/><rect x="28" y="55" width="14" height="20" rx="2" fill="white"/><polygon points="35,57 31,70 35,73 39,70" fill="${c.tie}"/><ellipse cx="35" cy="38" rx="18" ry="20" fill="${c.skin}"/><ellipse cx="35" cy="24" rx="19" ry="12" fill="${c.hair}"/><rect x="16" y="22" width="38" height="8" rx="4" fill="${c.hair}"/>${eyes}${mouth}${blush}${sweat}<ellipse cx="17" cy="38" rx="4" ry="5" fill="${c.skin}"/><ellipse cx="53" cy="38" rx="4" ry="5" fill="${c.skin}"/></svg>`;
-      }
-
-      function createBombSVG() {
-        return `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="20" width="50" height="55" rx="3" fill="#fff8e7" stroke="#caa04e" stroke-width="1.5"/><rect x="15" y="20" width="50" height="12" rx="3" fill="#f59e0b"/><text x="40" y="29" text-anchor="middle" font-size="7" font-weight="700" fill="white">품 의 서</text><line x1="22" y1="42" x2="58" y2="42" stroke="#d4a373" stroke-width="1.5"/><line x1="22" y1="49" x2="58" y2="49" stroke="#d4a373" stroke-width="1.5"/><line x1="22" y1="56" x2="45" y2="56" stroke="#d4a373" stroke-width="1.5"/><circle cx="52" cy="62" r="7" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.6"/><text x="52" y="65" text-anchor="middle" font-size="6" fill="#ef4444" opacity="0.6">반려</text><ellipse cx="25" cy="18" rx="8" ry="14" fill="#ff6b35" opacity="0.9"><animate attributeName="ry" values="14;17;14" dur="0.3s" repeatCount="indefinite"/></ellipse><ellipse cx="40" cy="14" rx="7" ry="16" fill="#f97316" opacity="0.85"><animate attributeName="ry" values="16;19;16" dur="0.4s" repeatCount="indefinite"/></ellipse><ellipse cx="55" cy="18" rx="8" ry="13" fill="#ff6b35" opacity="0.9"><animate attributeName="ry" values="13;16;13" dur="0.35s" repeatCount="indefinite"/></ellipse><ellipse cx="33" cy="12" rx="5" ry="10" fill="#fbbf24" opacity="0.7"><animate attributeName="ry" values="10;13;10" dur="0.25s" repeatCount="indefinite"/></ellipse><ellipse cx="48" cy="13" rx="5" ry="9" fill="#fbbf24" opacity="0.7"><animate attributeName="ry" values="9;12;9" dur="0.3s" repeatCount="indefinite"/></ellipse></svg>`;
-      }
-
-      // ══════════════════════════════════════════════════════════
-      // 게임 상태
-      // ══════════════════════════════════════════════════════════
-      let playerCount = 0,
-        gamePlayers = [],
-        rand = null,
-        bombAngle = 0;
-      const R = 0.38; // arena radius ratio
-      const ORBIT = R * 0.65;
-
-      // 이벤트 목록
-      const EVENTS = [
-        {
-          text: "⚡ 팀장님 퇴근! → 가속!",
-          color: "#22c55e",
-          effect: "speed_up",
-        },
-        {
-          text: "🔄 결재라인 변경! → 역회전!",
-          color: "#8b5cf6",
-          effect: "reverse",
-        },
-        {
-          text: "🖥️ ERP 서버 다운! → 일시정지!",
-          color: "#ef4444",
-          effect: "pause",
-        },
-        {
-          text: "📋 서류 추가 발생! → 가속!",
-          color: "#f59e0b",
-          effect: "speed_up",
-        },
-        {
-          text: "☕ 커피 타임! → 감속!",
-          color: "#06b6d4",
-          effect: "slow_down",
-        },
-        {
-          text: "🔄 부장님 재검토! → 역회전!",
-          color: "#ec4899",
-          effect: "reverse",
-        },
-      ];
-
-      // ══════════════════════════════════════════════════════════
-      // 플랫폼 / 테스트 모드
-      // ══════════════════════════════════════════════════════════
-      let platformConnected = false;
-      GameSDK.on("init", ({ players, seed }) => {
-        platformConnected = true;
-        gamePlayers = players;
-        playerCount = players.length;
-        rand = GameSDK.prng(seed);
-        document.getElementById("waiting").style.display = "none";
-        document.getElementById("game").style.display = "block";
-        setupArena();
-      });
-      GameSDK.on("start", () => {
-        initAudio();
-        runCountdown(() => startRound());
-      });
-
-      setTimeout(() => {
-        if (platformConnected) return;
-        document.getElementById("testMode").style.display = "block";
-        document.getElementById("waitingMsg").textContent =
-          "플랫폼 미연결 — 테스트 모드";
-        const sel = document.getElementById("playerSelect"),
-          btn = document.getElementById("startBtn");
-        let sc = 0;
-        for (let i = 2; i <= 8; i++) {
-          const b = document.createElement("button");
-          b.className = "player-btn";
-          b.textContent = i;
-          b.onclick = () => {
-            sel.querySelectorAll(".player-btn").forEach((x) => {
-              x.style.borderColor = "#334155";
-              x.style.background = "#1e293b";
-            });
-            b.style.borderColor = "#ff6b35";
-            b.style.background = "#2d1f0f";
-            sc = i;
-            btn.style.display = "block";
-          };
-          sel.appendChild(b);
-        }
-        btn.onclick = () => {
-          if (sc < 2) return;
-          initAudio();
-          const names = [
-            "강명훈",
-            "이서연",
-            "박찬영",
-            "김태호",
-            "정수빈",
-            "최유진",
-            "한도윤",
-            "윤지아",
-          ];
-          gamePlayers = [];
-          for (let i = 0; i < sc; i++)
-            gamePlayers.push({ id: `p${i + 1}`, name: names[i] });
-          playerCount = sc;
-          rand = GameSDK.prng(String(Date.now()));
-          document.getElementById("waiting").style.display = "none";
-          document.getElementById("game").style.display = "block";
-          setupArena();
-          runCountdown(() => startRound());
-        };
-      }, 2000);
-
-      // ══════════════════════════════════════════════════════════
-      // 아레나 세팅
-      // ══════════════════════════════════════════════════════════
-      function setupArena() {
-        const arena = document.getElementById("arena");
-        arena.innerHTML = "";
-        gamePlayers.forEach((p, i) => {
-          const slot = document.createElement("div");
-          slot.className = "player-slot";
-          slot.id = `slot-${p.id}`;
-          const a = (i / gamePlayers.length) * Math.PI * 2 - Math.PI / 2;
-          slot.style.left = `${50 + R * 100 * Math.cos(a)}%`;
-          slot.style.top = `${50 + R * 100 * Math.sin(a)}%`;
-          slot.innerHTML = `<div class="player-avatar" id="avatar-${p.id}">${createCharSVG(i, "normal")}</div><div class="player-name">${p.name}</div>`;
-          arena.appendChild(slot);
-        });
-        const bomb = document.createElement("div");
-        bomb.className = "bomb";
-        bomb.id = "bomb";
-        bomb.innerHTML = createBombSVG();
-        arena.appendChild(bomb);
-      }
-
-      function getPlayerAngle(idx) {
-        return (idx / gamePlayers.length) * Math.PI * 2 - Math.PI / 2;
-      }
-
-      function closestPlayerIdx(angle) {
-        let best = 0,
-          bestDist = Infinity;
-        for (let i = 0; i < gamePlayers.length; i++) {
-          const pa = getPlayerAngle(i);
-          let d = Math.abs(
-            ((angle - pa + Math.PI * 3) % (Math.PI * 2)) - Math.PI,
-          );
-          if (d < bestDist) {
-            bestDist = d;
-            best = i;
-          }
-        }
-        return { idx: best, dist: bestDist };
-      }
-
-      // ══════════════════════════════════════════════════════════
-      // 카운트다운
-      // ══════════════════════════════════════════════════════════
-      function runCountdown(cb) {
-        const el = document.getElementById("countdown");
-        el.classList.add("active");
-        let c = 3;
-        function tick() {
-          if (c > 0) {
-            el.innerHTML = `<span class="cd-num">${c}</span>`;
-            c--;
-            setTimeout(tick, 900);
-          } else {
-            el.innerHTML = `<span class="cd-num" style="color:#f7c948">START!</span>`;
-            setTimeout(() => {
-              el.classList.remove("active");
-              cb();
-            }, 700);
-          }
-        }
-        tick();
-      }
-
-      // ══════════════════════════════════════════════════════════
-      // 메인 라운드 — 페이즈 시스템
-      // ══════════════════════════════════════════════════════════
-      function startRound() {
-        gamePlayers.forEach(
-          (p, i) =>
-            (document.getElementById(`avatar-${p.id}`).innerHTML =
-              createCharSVG(i, "scared")),
-        );
-
-        const bomb = document.getElementById("bomb");
-        bomb.classList.add("spinning");
-
-        // 타겟 결정
-        const targetIdx = Math.floor(rand() * gamePlayers.length);
-        const targetAngle = getPlayerAngle(targetIdx);
-
-        // 페이크 멈춤 대상 (타겟이 아닌 사람 2명)
-        const fakeTargets = [];
-        const pool = gamePlayers
-          .map((_, i) => i)
-          .filter((i) => i !== targetIdx);
-        for (let i = 0; i < Math.min(2, pool.length); i++) {
-          const pick = Math.floor(rand() * pool.length);
-          fakeTargets.push(pool.splice(pick, 1)[0]);
-        }
-
-        // 이벤트 스케줄
-        const eventSchedule = [];
-        const ev1 = EVENTS[Math.floor(rand() * EVENTS.length)];
-        const ev2 = EVENTS[Math.floor(rand() * EVENTS.length)];
-        eventSchedule.push(ev1, ev2);
-
-        // 페이즈 시퀀스 빌드
-        // 총 ~15초
-        const phases = [];
-        // 1) 고속 회전 (3초)
-        phases.push({ type: "spin", duration: 3000, speed: 8 });
-        // 2) 이벤트 1
-        phases.push({ type: "event", event: eventSchedule[0] });
-        // 3) 스핀 (2초) - 이벤트 효과 적용
-        phases.push({
-          type: "spin",
-          duration: 2000,
-          speed:
-            eventSchedule[0].effect === "speed_up"
-              ? 12
-              : eventSchedule[0].effect === "slow_down"
-                ? 4
-                : eventSchedule[0].effect === "reverse"
-                  ? -7
-                  : 8,
-        });
-        // 4) 페이크 멈춤 1
-        if (fakeTargets.length > 0)
-          phases.push({
-            type: "fake_stop",
-            targetIdx: fakeTargets[0],
-            duration: 2500,
-          });
-        // 5) 가속 재개 (2초)
-        phases.push({ type: "spin", duration: 2000, speed: 9 });
-        // 6) 이벤트 2
-        phases.push({ type: "event", event: eventSchedule[1] });
-        // 7) 스핀 (1.5초)
-        phases.push({
-          type: "spin",
-          duration: 1500,
-          speed:
-            eventSchedule[1].effect === "reverse"
-              ? -6
-              : eventSchedule[1].effect === "speed_up"
-                ? 11
-                : 7,
-        });
-        // 8) 페이크 멈춤 2
-        if (fakeTargets.length > 1)
-          phases.push({
-            type: "fake_stop",
-            targetIdx: fakeTargets[1],
-            duration: 2500,
-          });
-        // 9) 최종 접근 — 줌인 + 슬로모션 + 진짜 멈춤
-        phases.push({ type: "final", targetIdx, duration: 4000 });
-
-        // 실행
-        let currentAngle = bombAngle;
-        let phaseIdx = 0;
-        let phaseStart = performance.now();
-        let lastTick = 0;
-        let direction = 1;
-        let paused = false;
-        let pauseUntil = 0;
-
-        function loop(now) {
-          if (phaseIdx >= phases.length) return;
-          const phase = phases[phaseIdx];
-          const elapsed = now - phaseStart;
-
-          // 일시정지 처리
-          if (paused && now < pauseUntil) {
-            requestAnimationFrame(loop);
-            return;
-          }
-          if (paused) {
-            paused = false;
-            phaseStart = now;
-            requestAnimationFrame(loop);
-            return;
-          }
-
-          if (phase.type === "event") {
-            showEventBanner(phase.event.text, phase.event.color);
-            if (phase.event.effect === "pause") {
-              paused = true;
-              pauseUntil = now + 1500;
-            }
-            if (phase.event.effect === "reverse") direction *= -1;
-            phaseIdx++;
-            phaseStart = now;
-            requestAnimationFrame(loop);
-            return;
-          }
-
-          if (phase.type === "spin") {
-            const speed = phase.speed * direction;
-            const dt = 1 / 60;
-            currentAngle += speed * dt;
-            updateBombPosition(currentAngle);
-            updateExpressions(currentAngle, Math.abs(speed));
-            spawnFireTrail(currentAngle);
-
-            // 틱 사운드
-            const tickInterval = Math.max(80, (300 / Math.abs(speed)) * 3);
-            if (now - lastTick > tickInterval) {
-              playTick(600 + Math.abs(speed) * 40, 0.1);
-              lastTick = now;
-            }
-
-            if (elapsed >= phase.duration) {
-              phaseIdx++;
-              phaseStart = now;
-            }
-            requestAnimationFrame(loop);
-            return;
-          }
-
-          if (phase.type === "fake_stop") {
-            const fakeAngle = getPlayerAngle(phase.targetIdx);
-            // ease into fake target, then pause, then resume
-            const progress = Math.min(elapsed / phase.duration, 1);
-            if (progress < 0.5) {
-              // 감속하며 접근
-              const p = progress / 0.5;
-              const eased = 1 - Math.pow(1 - p, 3);
-              const angleDiff = normalizeAngle(fakeAngle - currentAngle);
-              const moveAngle =
-                angleDiff * eased * 0.3 +
-                (1 - eased) * 4 * direction * (1 / 60);
-              currentAngle += moveAngle * 0.1;
-              updateBombPosition(currentAngle);
-              updateExpressions(currentAngle, 2 * (1 - p));
-
-              const tickInterval = 100 + p * 400;
-              if (now - lastTick > tickInterval) {
-                playTick(500, 0.12);
-                lastTick = now;
-              }
-              if (now - lastTick > 200) playHeartbeat();
-            } else if (progress < 0.65) {
-              // 거의 멈춤 — "!" 이펙트
-              if (progress > 0.5 && progress < 0.52) {
-                showFakeExclaim();
-                // 해당 플레이어 terrified
-                document.getElementById(
-                  `avatar-${gamePlayers[phase.targetIdx].id}`,
-                ).innerHTML = createCharSVG(phase.targetIdx, "terrified");
-                playHeartbeat();
-              }
-              updateBombPosition(currentAngle);
-            } else {
-              // 다시 가속!
-              const p = (progress - 0.65) / 0.35;
-              currentAngle += (2 + p * 6) * direction * (1 / 60);
-              updateBombPosition(currentAngle);
-              updateExpressions(currentAngle, 2 + p * 6);
-              // 안도 표정 복구
-              if (progress > 0.66 && progress < 0.68) {
-                document.getElementById(
-                  `avatar-${gamePlayers[phase.targetIdx].id}`,
-                ).innerHTML = createCharSVG(phase.targetIdx, "relieved");
-                setTimeout(() => {
-                  document.getElementById(
-                    `avatar-${gamePlayers[phase.targetIdx].id}`,
-                  ).innerHTML = createCharSVG(phase.targetIdx, "scared");
-                }, 800);
-              }
-            }
-            if (elapsed >= phase.duration) {
-              phaseIdx++;
-              phaseStart = now;
-            }
-            requestAnimationFrame(loop);
-            return;
-          }
-
-          if (phase.type === "final") {
-            const progress = Math.min(elapsed / phase.duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 5); // very dramatic ease-out
-
-            // 줌인
-            const arena = document.getElementById("arena");
-            if (progress > 0.3) arena.classList.add("zoom-in");
-
-            // 남은 각도 계산 (현재 → 타겟)
-            const remaining =
-              normalizeAngle(targetAngle - currentAngle) + Math.PI * 4; // +2바퀴
-            const angle = currentAngle + remaining * eased;
-            updateBombPosition(angle);
-
-            // 슬로모션 표정
-            const { idx: nearIdx, dist } = closestPlayerIdx(angle);
-            gamePlayers.forEach((p, i) => {
-              const exp =
-                i === nearIdx && dist < 0.4
-                  ? "terrified"
-                  : dist < 0.8 && i === nearIdx
-                    ? "scared"
-                    : "scared";
-              document.getElementById(`avatar-${p.id}`).innerHTML =
-                createCharSVG(i, exp);
-            });
-
-            // 째깍 소리 (점점 느려짐)
-            const tickRate = 60 + (1 - (1 - progress)) * 600;
-            if (now - lastTick > tickRate) {
-              playTick(400 + progress * 500, 0.15 + progress * 0.1);
-              lastTick = now;
-            }
-            if (progress > 0.7) playHeartbeat();
-
-            spawnFireTrail(angle);
-
-            if (progress >= 1) {
-              bombAngle = angle;
-              bomb.classList.remove("spinning");
-              arena.classList.remove("zoom-in");
-
-              const slot = document.getElementById(
-                `slot-${gamePlayers[targetIdx].id}`,
-              );
-              bomb.style.left = slot.style.left;
-              bomb.style.top = slot.style.top;
-
-              setTimeout(() => showResult(gamePlayers[targetIdx].id), 500);
-              return;
-            }
-            requestAnimationFrame(loop);
-          }
-        }
-
-        requestAnimationFrame(loop);
-      }
-
-      function normalizeAngle(a) {
-        return ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-      }
-
-      function updateBombPosition(angle) {
-        const bomb = document.getElementById("bomb");
-        bomb.style.left = 50 + ORBIT * 100 * Math.cos(angle) + "%";
-        bomb.style.top = 50 + ORBIT * 100 * Math.sin(angle) + "%";
-      }
-
-      function updateExpressions(angle, speed) {
-        const { idx: nearIdx, dist } = closestPlayerIdx(angle);
-        gamePlayers.forEach((p, i) => {
-          const slot = document.getElementById(`slot-${p.id}`);
-          slot.classList.remove("danger", "sweat");
-          let exp = "scared";
-          if (i === nearIdx && dist < 0.3) {
-            exp = "terrified";
-            slot.classList.add("danger");
-          } else if (i === nearIdx && dist < 0.6) {
-            slot.classList.add("sweat");
-          }
-          document.getElementById(`avatar-${p.id}`).innerHTML = createCharSVG(
-            i,
-            exp,
-          );
-        });
-      }
-
-      function spawnFireTrail(angle) {
-        if (Math.random() > 0.3) return;
-        const arena = document.getElementById("arena");
-        const t = document.createElement("div");
-        t.className = "fire-trail";
-        const colors = ["#ff6b35", "#f97316", "#fbbf24", "#ef4444"];
-        t.style.background = colors[Math.floor(Math.random() * colors.length)];
-        t.style.left =
-          50 + ORBIT * 100 * Math.cos(angle) + (Math.random() - 0.5) * 4 + "%";
-        t.style.top =
-          50 + ORBIT * 100 * Math.sin(angle) + (Math.random() - 0.5) * 4 + "%";
-        t.style.width = t.style.height = 6 + Math.random() * 8 + "px";
-        arena.appendChild(t);
-        setTimeout(() => t.remove(), 800);
-      }
-
-      function showEventBanner(text, color) {
-        const b = document.createElement("div");
-        b.className = "event-banner";
-        b.style.background = `linear-gradient(135deg, ${color}, ${color}aa)`;
-        b.textContent = text;
-        document.body.appendChild(b);
-        setTimeout(() => b.remove(), 2200);
-      }
-
-      function showFakeExclaim() {
-        const e = document.createElement("div");
-        e.className = "fake-exclaim";
-        e.textContent = "!?";
-        document.body.appendChild(e);
-        setTimeout(() => e.remove(), 800);
-      }
-
-      // ══════════════════════════════════════════════════════════
-      // 결과 연출
-      // ══════════════════════════════════════════════════════════
-      function showResult(loserId) {
-        const loserIdx = gamePlayers.findIndex((p) => p.id === loserId);
-
-        // 화면 흔들림
-        const arena = document.getElementById("arena");
-        arena.classList.add("screen-shake");
-        setTimeout(() => arena.classList.remove("screen-shake"), 600);
-
-        // 폭발 + 사운드
-        playBoom();
-        const explosion = document.getElementById("explosion");
-        explosion.classList.add("active");
-        setTimeout(() => explosion.classList.remove("active"), 1000);
-
-        spawnPaperParticles(loserId);
-
-        const loserSlot = document.getElementById(`slot-${loserId}`);
-        loserSlot.classList.remove("danger", "sweat");
-        loserSlot.classList.add("eliminated");
-        document.getElementById(`avatar-${loserId}`).innerHTML = createCharSVG(
-          loserIdx,
-          "crying",
-        );
-
-        setTimeout(() => {
-          gamePlayers.forEach((p, i) => {
-            if (p.id === loserId) return;
-            const s = document.getElementById(`slot-${p.id}`);
-            s.classList.remove("danger", "sweat");
-            s.classList.add("safe");
-            document.getElementById(`avatar-${p.id}`).innerHTML = createCharSVG(
-              i,
-              "relieved",
-            );
-            const st = document.createElement("div");
-            st.className = "safe-text";
-            st.textContent = "😮‍💨";
-            s.appendChild(st);
-            setTimeout(() => st.remove(), 1500);
-            setTimeout(() => s.classList.remove("safe"), 800);
-          });
-        }, 600);
-
-        gamePlayers.forEach((p) =>
-          GameSDK.submit(p.id, p.id === loserId ? 1 : 0),
-        );
-
-        setTimeout(() => {
-          const overlay = document.getElementById("loserOverlay");
-          document.getElementById("loserAvatarBig").innerHTML = createCharSVG(
-            loserIdx,
-            "crying",
-          );
-          document.getElementById("loserName").textContent =
-            gamePlayers[loserIdx].name;
-          overlay.classList.add("active");
-          for (let i = 0; i < 4; i++) {
-            setTimeout(() => {
-              const papers = ["📋", "📄", "🧾", "📑", "✉️", "📝", "💸", "🔥"];
-              for (let j = 0; j < 12; j++) {
-                const p = document.createElement("div");
-                p.className = "paper-particle";
-                p.textContent =
-                  papers[Math.floor(Math.random() * papers.length)];
-                p.style.left = Math.random() * window.innerWidth + "px";
-                p.style.top = "-20px";
-                p.style.animationDuration = 2 + Math.random() * 2 + "s";
-                p.style.animationDelay = Math.random() * 0.5 + "s";
-                document.body.appendChild(p);
-                setTimeout(() => p.remove(), 5000);
-              }
-            }, i * 400);
-          }
-        }, 2000);
-      }
-
-      function spawnPaperParticles(pid) {
-        const slot = document.getElementById(`slot-${pid}`);
-        const rect = slot.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2,
-          cy = rect.top + rect.height / 2;
-        const papers = ["📋", "📄", "🧾", "📑", "✉️", "📝", "💸"];
-        for (let i = 0; i < 20; i++) {
-          const p = document.createElement("div");
-          p.className = "paper-particle";
-          p.textContent = papers[Math.floor(Math.random() * papers.length)];
-          p.style.left = cx + (Math.random() - 0.5) * 120 + "px";
-          p.style.top = cy + (Math.random() - 0.5) * 80 + "px";
-          p.style.animationDuration = 1.5 + Math.random() + "s";
-          p.style.animationDelay = Math.random() * 0.3 + "s";
-          document.body.appendChild(p);
-          setTimeout(() => p.remove(), 3000);
-        }
-      }
-    </script>
-  </body>
+  document.getElementById('loserMsg').textContent = `${loser.name}님, 결재 상신 부탁드립니다 📋`;
+  document.getElementById('resultOverlay').classList.add('active');
+}
+</script>
+</body>
 </html>
