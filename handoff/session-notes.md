@@ -178,3 +178,13 @@
   - 다음 단계: B13 E2E mock 녹색 — 4B B10(결재상신) 머지 후 진입. RoomPage 5 case PR 도 3B RoomPage 골격(A10 머지됨) 위에 얹을 수 있는 시점.
 
 [3A] Task A5 follow-up — getById clone + join PREPARING guard (review fixes, +2 tests)
+
+[3B] 2026-04-20 — Task A11 완료 — PlayerList · GameSelector · LobbyView + RoomPage PREPARING 연결.
+  - 계속 `hackathon-3team-3b/` 워크트리에서 3B 트랙 병렬 진행. 이 커밋 작성 중 main 은 `c0ee1b9` (3A A5 follow-up) 까지 전진 — 내 워크트리 server/tests/handoff 는 `git checkout HEAD -- ...` 로 재동기화, src/web 영역만 추가.
+  - src/web/components/PlayerList.tsx: `players` · `hostId` · `loserId?` · `highlightMe?`. 접속끊김(connected=false) · 패자 · 본인 강조 클래스 3종. FINISHED 단계에서 ResultView 가 재사용할 수 있도록 loserId prop 미리 공개.
+  - src/web/components/GameSelector.tsx: `GET /api/games` 호출 · 응답 형태 배열/`{games:[]}` 양쪽 허용 · A6/A7 미머지 시 404 fallback 하고 hint 문구 표시. select disabled 는 host 여부로 제어.
+  - src/web/components/LobbyView.tsx: ViewProps(snap/me) 공동 계약 네이밍. `selectedGameId` 는 `snap.game?.id` 로 취득 (UnifiedSnap 의 selectedGameId 와 동일 — protocol.ts 건드리지 않음). start 버튼은 host + game 선택 + min/max players 만족 때만 활성. `socket.emit('game:select')` / `game:start` 는 ack 에러만 표시 (서버 A9 이전엔 hang 정상). 룸코드 복사 버튼(A15 스펙 선행) · `navigator.clipboard` 실패 시 토스트.
+  - src/web/pages/RoomPage.tsx: PREPARING case 에서 LobbyView 렌더. 나머지 status 는 "후속 Task (A12/A13) 에서 구현" 플레이스홀더. `session/me` null 가드 유지 — useSession 이 socket ack 전엔 session null.
+  - src/web/styles.css: Lobby · PlayerList · GameSelector 스타일 append. 공동 계약 토큰(font/color/space/radius) 전부 재사용, 새 토큰 추가 없음.
+  - 검증: web typecheck 0 error. A9 머지 전이라 2탭 라이브 검증 skip.
+  - 다음 단계: A12 GameFrame + useGameFrame (iframe postMessage 브리지). protocol.ts 에 `HostToIframe`/`IframeToHost` 가 없어 web 로컬로 정의하거나 공동 계약 추가 필요 — 4A 와 조율 포인트.

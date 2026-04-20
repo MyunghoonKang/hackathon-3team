@@ -271,3 +271,205 @@ a {
   border-radius: var(--radius-pill);
   font-size: 0.875rem;
 }
+
+/* ---------------------------------------------------------------------------
+   LobbyView · PlayerList · GameSelector (A11)
+   --------------------------------------------------------------------------- */
+
+.lobby {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.lobby__header {
+  display: flex;
+  justify-content: center;
+}
+
+.lobby__code-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lobby__code-label {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.lobby__code-btn {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 2.25rem;
+  letter-spacing: 0.25em;
+  color: var(--color-primary);
+  background: transparent;
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.lobby__code-btn:hover {
+  opacity: 0.85;
+}
+
+.lobby__code-copy {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  text-transform: none;
+}
+
+.lobby__section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.lobby__title {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lobby__count {
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+}
+
+.lobby__game-desc {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.lobby__start-btn {
+  font: inherit;
+  font-weight: 600;
+  padding: var(--space-3) var(--space-6);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-ink);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.lobby__start-btn:disabled {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.lobby__start-btn:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.lobby__wait {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.lobby__error {
+  margin: 0;
+  color: var(--color-status-failed);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* PlayerList */
+.player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.player-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: 0.875rem;
+}
+
+.player-chip--me {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.player-chip--loser {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.player-chip--offline {
+  opacity: 0.5;
+}
+
+.player-chip__name {
+  font-weight: 500;
+}
+
+.player-chip__badge {
+  font-size: 0.75rem;
+}
+
+/* GameSelector */
+.game-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.game-selector__select {
+  font: inherit;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.game-selector__select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.game-selector__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
