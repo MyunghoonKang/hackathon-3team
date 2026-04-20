@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 역할 재분배 설계(`docs/superpowers/specs/2026-04-20-role-rebalance-design.md`)를 반영해 `docs/handoff/` 하위 문서를 **4 세션 병렬 (3A/3B/4A/4B)** 기준으로 재작성한다. 해커톤 시작 전 팀 4명이 브리프만 읽고 즉시 Claude Code 세션을 띄울 수 있어야 한다.
+**Goal:** 역할 재분배 설계(`docs/superpowers/specs/2026-04-20-role-rebalance-design.md`)를 반영해 `docs/handoff/` 하위 문서를 **4 세션 병렬 (3A/3B/4A/4B)** 기준으로 재작성한다. 해커톤 시작 전 팀 최대 8명이 브리프만 읽고 즉시 Claude Code 세션을 띄울 수 있어야 한다.
 
 **Architecture:** 기존 3 파일 구조(`README.md` + `dev3-ui.md` + `dev4-engine.md` + `dev1-2-game-cowork.md`) → 새 3 파일 구조(`README.md` + `dev3.md` + `dev4.md` + `dev1-2-game-cowork.md`) 로 이행. `dev3-ui.md`·`dev4-engine.md` 는 삭제. 각 브리프는 세션 2개에 대한 프롬프트·범위·DoD·블로커를 한 문서 안에 포함.
 
@@ -39,6 +39,7 @@ docs/handoff/dev4-engine.md           # 내용은 dev4.md 로 흡수
 ## Task 1: `docs/handoff/README.md` 재작성
 
 **Files:**
+
 - Modify: `docs/handoff/README.md`
 
 현 README 를 새 4 세션 구조로 재작성. 다음 섹션 **모두 포함**:
@@ -72,11 +73,11 @@ Run: `cat docs/handoff/README.md`
 
 ## 각자 읽을 문서
 
-| 담당 | 도구 | 세션 | 문서 |
-|------|------|------|------|
-| Dev 1, 2 | Claude Cowork | — | [`dev1-2-game-cowork.md`](./dev1-2-game-cowork.md) · [`games-starter-template.html`](./games-starter-template.html) · [`games-test-harness.html`](./games-test-harness.html) |
-| Dev 3 | Claude Code × 2 | 3A (엔진) · 3B (UI) | [`dev3.md`](./dev3.md) |
-| Dev 4 | Claude Code × 2 | 4A (데이터·API·UI) · 4B (Playwright) | [`dev4.md`](./dev4.md) |
+| 담당     | 도구            | 세션                                 | 문서                                                                                                                                                                         |
+| -------- | --------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dev 1, 2 | Claude Cowork   | —                                    | [`dev1-2-game-cowork.md`](./dev1-2-game-cowork.md) · [`games-starter-template.html`](./games-starter-template.html) · [`games-test-harness.html`](./games-test-harness.html) |
+| Dev 3    | Claude Code × 2 | 3A (엔진) · 3B (UI)                  | [`dev3.md`](./dev3.md)                                                                                                                                                       |
+| Dev 4    | Claude Code × 2 | 4A (데이터·API·UI) · 4B (Playwright) | [`dev4.md`](./dev4.md)                                                                                                                                                       |
 
 ## 공통 참조
 
@@ -156,6 +157,7 @@ git commit -m "docs(handoff): rewrite README for 4-session parallel (3A/3B/4A/4B
 ## Task 2: `docs/handoff/dev3.md` 신규 작성
 
 **Files:**
+
 - Create: `docs/handoff/dev3.md`
 - (아직 삭제 안 함: `docs/handoff/dev3-ui.md` — Task 5 에서 삭제)
 
@@ -193,9 +195,10 @@ REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement tas
 역할 재분배 설계: docs/superpowers/specs/2026-04-20-role-rebalance-design.md §1 의 "3A" 행 범위.
 Plan A: docs/superpowers/plans/2026-04-19-game-platform.md 의 Task A1~A9 + A16 만 수행.
 파일 경로 소유: src/server/{index,app,config,io}.ts · src/server/{db,session,games}/** ·
-src/server/routes/{sessions,games}.ts · src/shared/** · tests/{roomCode,manager,registry,runner,io}.test.ts · tests/shared/**
+src/server/routes/{sessions,games}.ts · src/shared/** · tests/{roomCode,manager,registry,runner,io}.test.ts · tests/shared/\*\*
 
 제약:
+
 - `src/shared/protocol.ts` 는 공동 계약 세션(Task A2 상응)에서 4A 와 합의한 타입을 유지. 추가 필드는 4A 에 사전 알림.
 - `src/server/routes/` 디렉터리는 `sessions.ts`·`games.ts` 만 소유. `credentials.ts`·`submissions.ts` 는 4A 소유이므로 건드리지 말 것.
 - Task A7 머지 직후 슬랙에 "admin upload OK" 알림 (Dev 1·2 언블록).
@@ -221,6 +224,7 @@ Run: `cat docs/handoff/dev3-ui.md`
 - [ ] **Step 3: 링크 유효성 & 참조 일관성**
 
 Run:
+
 ```
 grep -oE "(docs/|\./)[A-Za-z0-9/_.-]+\.md" docs/handoff/dev3.md | sort -u
 ```
@@ -230,6 +234,7 @@ Expected: `./dev4.md`·`./README.md`·`docs/superpowers/plans/2026-04-19-game-pl
 - [ ] **Step 4: spec 일관성 체크**
 
 스펙 §4.1·§4.2·§1 의 3A·3B 파일 소유권이 dev3.md 본문과 **일치** 해야 함. 특히:
+
 - `src/server/routes/` 디렉터리의 파일명 분리(`sessions,games` vs `credentials,submissions`)
 - `src/web/components/{CredentialForm,ResultView}.tsx` 가 3B 소유에서 **제외** 됨을 명시
 - RoomPage 3 case 원칙
@@ -246,6 +251,7 @@ git commit -m "docs(handoff): add dev3.md — Plan A full-stack brief (sessions 
 ## Task 3: `docs/handoff/dev4.md` 신규 작성
 
 **Files:**
+
 - Create: `docs/handoff/dev4.md`
 
 Plan B 풀스택 브리프. 세션 4A·4B 둘 다 커버. 구조:
@@ -285,6 +291,7 @@ Run: `cat docs/handoff/dev4-engine.md`
 - [ ] **Step 3: 프롬프트 예시에 경로 충돌 방지 조항 포함**
 
 각 세션 프롬프트에 다음 문구 필수:
+
 ```
 경로 소유 외 파일 수정 금지: 4A 는 src/server/worker/** 를 건드리지 않는다 (4B 소유).
                            4B 는 src/web/**·src/server/{vault,submissions,hooks,routes}/** 를 건드리지 않는다.
@@ -294,6 +301,7 @@ shared/protocol.ts 에 필드 추가가 필요하면 3A 에 먼저 슬랙으로 
 - [ ] **Step 4: spec · Plan B 일관성 체크**
 
 Run:
+
 ```
 grep -E "B[0-9]+" docs/handoff/dev4.md | sort -u
 ```
@@ -314,6 +322,7 @@ git commit -m "docs(handoff): add dev4.md — Plan B full-stack brief (sessions 
 ## Task 4: `docs/handoff/dev1-2-game-cowork.md` 경미 수정
 
 **Files:**
+
 - Modify: `docs/handoff/dev1-2-game-cowork.md`
 
 Dev 1·2 범위 자체는 변경 없음. 수정 포인트:
@@ -325,6 +334,7 @@ Dev 1·2 범위 자체는 변경 없음. 수정 포인트:
 - [ ] **Step 1: 현 파일에서 변경 대상 위치 찾기**
 
 Run:
+
 ```
 grep -n "Dev 4" docs/handoff/dev1-2-game-cowork.md
 grep -n "dev3-ui\|dev4-engine" docs/handoff/dev1-2-game-cowork.md
@@ -351,6 +361,7 @@ git commit -m "docs(handoff): note that either 4A or 4B session can admin-regist
 ## Task 5: 구식 브리프 파일 삭제
 
 **Files:**
+
 - Delete: `docs/handoff/dev3-ui.md`
 - Delete: `docs/handoff/dev4-engine.md`
 
@@ -359,6 +370,7 @@ git commit -m "docs(handoff): note that either 4A or 4B session can admin-regist
 - [ ] **Step 1: 어느 문서에서도 두 파일을 참조하지 않는지 확인**
 
 Run:
+
 ```
 grep -rn "dev3-ui\|dev4-engine" docs/
 ```
@@ -368,6 +380,7 @@ Expected: 결과 0건. 결과가 있으면 해당 파일을 `dev3.md`·`dev4.md`
 - [ ] **Step 2: 파일 삭제**
 
 Run:
+
 ```
 git rm docs/handoff/dev3-ui.md docs/handoff/dev4-engine.md
 ```
@@ -391,6 +404,7 @@ git commit -m "docs(handoff): remove superseded dev3-ui.md / dev4-engine.md (fol
 Read: `docs/handoff/README.md` + `docs/handoff/dev3.md`
 
 확인:
+
 - 3A 세션이 어떤 Claude Code 프롬프트로 시작되는가 → 프롬프트 블록 존재 ✓
 - Task A1 부터 어디까지 하나 → A1~A9 + A16 명시 ✓
 - 어느 파일을 건드리면 안 되는가 → 4A·4B·3B 소유 경로 명시 ✓
@@ -402,13 +416,15 @@ Read: `docs/handoff/README.md` + `docs/handoff/dev3.md`
 Read: `docs/handoff/dev4.md` (세션 4B 섹션)
 
 확인:
+
 - 4B 가 건드리는 경로 → `src/server/worker/**`·목업 HTML·matcher/worker-mock 테스트 ✓
 - `runSubmission` 시그니처 명시 ✓
 - B14 실 ERP 리허설 절차 (WORKER_MODE=live · ERP_CONFIRM_SUBMIT=1 · 사용자 동석) ✓
 
 - [ ] **Step 3: 4 세션 동시 가동 시 파일 충돌 가능성 점검**
 
-스펙 §1 소유권 표와 각 dev*.md 프롬프트의 "경로 외 수정 금지" 조항이 일치하는지 확인. 특히:
+스펙 §1 소유권 표와 각 dev\*.md 프롬프트의 "경로 외 수정 금지" 조항이 일치하는지 확인. 특히:
+
 - `src/server/routes/` 디렉터리 공유: 파일명 분리 명시되어 있는가? ✓
 - `src/server/db/schema.ts` 공동 편집 규칙(3A 는 sessions, 4A 는 submissions·credentials): dev3.md·dev4.md 양쪽에 명시되어 있는가? ✓
 - `src/web/pages/RoomPage.tsx` 편집 순서(3B 3 case → 4A 5 case PR 별도): 명시되어 있는가? ✓
@@ -418,18 +434,21 @@ Read: `docs/handoff/dev4.md` (세션 4B 섹션)
 Read: `docs/handoff/dev1-2-game-cowork.md`
 
 확인:
+
 - 운영자에게 HTML 전달 시 누가 받는지 명확 (4A or 4B 어느 쪽이든 OK) ✓
 - meta 태그 · postMessage 계약은 변화 없음 ✓
 
 - [ ] **Step 5: 누락 Task 확인**
 
 Run:
+
 ```
 grep -cE "A[0-9]+" docs/handoff/dev3.md
 grep -cE "B[0-9]+" docs/handoff/dev4.md
 ```
 
 Expected:
+
 - dev3.md 에 A1~A16 중 3A·3B 담당분(A1~A15, A16 — A14 제외) 모두 등장
 - dev4.md 에 B1~B14 전부 등장 (A14 는 Dev 1·2 담당이므로 dev3.md 에 없음)
 

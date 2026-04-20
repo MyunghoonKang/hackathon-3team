@@ -49,7 +49,18 @@ export function LobbyView({ snap, me }: Props) {
 
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(snap.roomCode);
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(snap.roomCode);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = snap.roomCode;
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {

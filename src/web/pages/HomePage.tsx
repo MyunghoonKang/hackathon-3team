@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSession } from '../hooks/useSession';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSession } from "../hooks/useSession";
 
 export default function HomePage() {
   const { create, join } = useSession();
   const nav = useNavigate();
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -20,7 +20,7 @@ export default function HomePage() {
       const snap = await create(name.trim());
       nav(`/room/${snap.roomCode}`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'create failed');
+      setErr(e instanceof Error ? e.message : "create failed");
     } finally {
       setBusy(false);
     }
@@ -33,7 +33,7 @@ export default function HomePage() {
       const { snap } = await join(code.trim().toUpperCase(), name.trim());
       nav(`/room/${snap.roomCode}`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'join failed');
+      setErr(e instanceof Error ? e.message : "join failed");
     } finally {
       setBusy(false);
     }
@@ -43,7 +43,9 @@ export default function HomePage() {
     <main className="home">
       <header className="home__hero">
         <h1 className="home__title">식후 벌칙게임</h1>
-        <p className="home__subtitle">4명이 놀고, 진 사람이 다음 점심을 쏜다</p>
+        <p className="home__subtitle">
+          최대 8명이 놀고, 진 사람이 다음 점심을 쏜다
+        </p>
       </header>
 
       <label className="home__field">
