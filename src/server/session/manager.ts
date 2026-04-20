@@ -340,6 +340,22 @@ export class SessionManager {
     return snap;
   }
 
+  // 4B 워커가 RUNNING 단계 내부에서 workerStep 만 갱신할 때 사용.
+  // transitionStatus 는 RUNNING→RUNNING self-loop 를 차단하므로 별도 메서드 필요.
+  // status 자체는 변경하지 않으며, snap 의 workerStep + updatedAt 만 갱신.
+  updateWorkerStep(sessionId: string, workerStep: WorkerStep): UnifiedSnap {
+    const snap = this.requireSession(sessionId);
+    if (snap.status !== 'RUNNING') {
+      throw new Error(
+        `updateWorkerStep requires RUNNING status, got ${snap.status} for session ${sessionId}`,
+      );
+    }
+    snap.workerStep = workerStep;
+    snap.updatedAt = new Date().toISOString();
+    this.touchDb(snap.id);
+    return snap;
+  }
+
   // ---------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------

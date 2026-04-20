@@ -6,30 +6,9 @@ import { Scheduler } from './submissions/scheduler';
 import { GameRegistry } from './games/registry';
 import { attachIo } from './io';
 import { sessionsRouter } from './routes/sessions';
+import { runSubmission, setWorkerDeps } from './worker/index';
 
 const config = loadConfig();
-
-// 4B 가 src/server/worker/index.ts 에서 runSubmission 을 export 하면 실 워커가 붙는다.
-// 부재 시에는 no-op 으로 대체해 Scheduler/run-now 만 먼저 돌려두고, 워커 머지 후 재기동한다.
-async function resolveRunSubmission(): Promise<(id: string) => Promise<void>> {
-  const workerPath = './worker/index.js';
-  try {
-    const mod = (await import(workerPath)) as {
-      runSubmission?: (id: string) => Promise<unknown>;
-    };
-    if (typeof mod.runSubmission === 'function') {
-      return async (id) => {
-        await mod.runSubmission!(id);
-      };
-    }
-    console.warn('[scheduler] ./worker/index.ts has no runSubmission export — using no-op');
-  } catch {
-    console.warn('[scheduler] worker module not yet available — using no-op');
-  }
-  return async () => {};
-}
-
-const runSubmission = await resolveRunSubmission();
 
 const httpServer = createServer();
 const io = new IOServer(httpServer, {
@@ -41,27 +20,49 @@ const registry = new GameRegistry({ dir: config.gamesDir, watch: true });
 await registry.scan();
 registry.startWatching();
 
-const { app, queue, mgr, registry: builtRegistry } = buildApp({
+// Scheduler/router 가 보는 시그니처는 (id) => Promise<void>. 4B 의 runSubmission 은
+// WorkerResult 를 돌려주지만 호출자는 무시(상태 갱신은 워커가 직접 책임). 타입만 맞춰 wrap.
+const runSubmissionVoid = async (id: string): Promise<void> => {
+  await runSubmission(id);
+};
+
+const built = buildApp({
   vaultKey: config.vaultKey,
   dbPath: config.dbPath,
   io,
   workerMode: config.workerMode,
-  runSubmission,
+  runSubmission: runSubmissionVoid,
   registry,
   gamesDir: config.gamesDir,
 });
 
-app.use('/api/sessions', sessionsRouter(mgr));
+// 4B 워커 deps 주입 — runSubmission 은 buildApp() 시점에 이미 router/scheduler 에
+// 캡처되어 있지만 실제 실행은 deps 가 채워진 이후이므로 안전.
+setWorkerDeps({
+  db: built.db,
+  queue: built.queue,
+  mgr: built.mgr,
+  io,
+  vault: built.vault,
+  mode: config.workerMode,
+  env: process.env,
+  erpBaseUrl: config.erpBaseUrl,
+  erpCompanyCode: config.erpCompanyCode,
+  headless: false,
+});
 
-if (builtRegistry) {
-  attachIo(io, { mgr, registry: builtRegistry });
+built.app.use('/api/sessions', sessionsRouter(built.mgr));
+
+if (built.registry) {
+  attachIo(io, { mgr: built.mgr, registry: built.registry });
 }
 
-httpServer.on('request', app);
+httpServer.on('request', built.app);
 
-const scheduler = new Scheduler({ queue, runSubmission, logger: console });
+const scheduler = new Scheduler({ queue: built.queue, runSubmission: runSubmissionVoid, logger: console });
 scheduler.start();
 
 httpServer.listen(config.port, () => {
-  console.log(`[server] listening on :${config.port}`);
+  // eslint-disable-next-line no-console
+  console.log(`[server] listening on :${config.port} (worker mode=${config.workerMode})`);
 });
