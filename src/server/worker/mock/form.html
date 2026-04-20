@@ -26,7 +26,7 @@
         - 내용:  <textarea id="writeContent">
         - 예산:  [예산조회] 버튼 → 팝업. 목업은 <input id="budgetCode"> 로 축약.
         - [카드사용내역] 버튼: id="btnCardHistory" → 실 ERP 는 모달; 목업은 card.html 로 이동.
-        - [결재상신] 버튼: id="btnApproval"
+        - [결재상신] 버튼: id="btnApproval" → B10 에서 approval.html 팝업 오픈
       실제 DOM 과 selector 명을 최대한 일치시켜 B8~B10 의 Playwright 스크립트를 최소 수정으로 재사용.
     -->
     <h1>지출품의서 작성</h1>
@@ -60,27 +60,21 @@
   </div>
 
   <script>
-    // window.Grids 스텁 — 실 ERP 의 예산조회/카드모달이 의존하는 전역.
-    // Playwright 가 page.evaluate 로 호출해 행을 주입할 수 있게 구멍만 뚫어둔다.
     window.Grids = window.Grids || {};
 
     document.getElementById('btnCardHistory').addEventListener('click', () => {
-      // B8 에서는 같은 페이지 내 모달로 바꿀 수 있음. 현재는 별도 html 로 라우팅.
       window.location.href = 'card.html';
     });
 
     document.getElementById('btnBudgetLookup').addEventListener('click', () => {
-      // B9 에서 예산 행을 주입하는 목업.
       document.getElementById('budgetCode').value = 'B-2026-FOOD-001';
     });
 
     document.getElementById('btnApproval').addEventListener('click', () => {
-      // B10 에서 결재상신 팝업으로 전환. 현재는 콘솔만.
-      console.log('[mock] approval clicked');
-      window.dispatchEvent(new CustomEvent('mock:approvalClicked'));
+      // B10: approval.html 을 새 탭으로 열어 Playwright context.waitForEvent('page') 로 catch.
+      window.open('approval.html', '_blank', 'width=860,height=700');
     });
 
-    // card.html 이 돌아오면서 postMessage 로 카드 정보를 전달하면 폼 채우기.
     window.addEventListener('message', (e) => {
       if (e.data && e.data.type === 'mock:cardPicked') {
         const row = e.data.row;
