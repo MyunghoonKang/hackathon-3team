@@ -188,3 +188,5 @@
   - src/web/styles.css: Lobby · PlayerList · GameSelector 스타일 append. 공동 계약 토큰(font/color/space/radius) 전부 재사용, 새 토큰 추가 없음.
   - 검증: web typecheck 0 error. A9 머지 전이라 2탭 라이브 검증 skip.
   - 다음 단계: A12 GameFrame + useGameFrame (iframe postMessage 브리지). protocol.ts 에 `HostToIframe`/`IframeToHost` 가 없어 web 로컬로 정의하거나 공동 계약 추가 필요 — 4A 와 조율 포인트.
+
+[3B] 2026-04-20 — Task A12 완료 — useGameFrame hook + GameFrame iframe bridge + GameView(game:begin socket + snap.game fallback) + RoomPage PLAYING case 추가.
