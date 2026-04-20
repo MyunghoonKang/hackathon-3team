@@ -191,6 +191,19 @@ export interface WorkerResult {
 }
 
 // ---------------------------------------------------------------------------
+// Zod schemas for runtime validation (GameRegistry parsing)
+// ---------------------------------------------------------------------------
+export const GameMetaSchema = z.object({
+  id: z.string().min(1),
+  filename: z.string().endsWith('.html'),
+  title: z.string().min(1),
+  minPlayers: z.number().int().min(2),
+  maxPlayers: z.number().int().min(2),
+  description: z.string().default(''),
+  compare: z.enum(['max', 'min']),
+});
+
+// ---------------------------------------------------------------------------
 // Socket event constants
 // ---------------------------------------------------------------------------
 
