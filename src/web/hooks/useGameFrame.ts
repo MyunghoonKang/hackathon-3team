@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { HostToIframe, IframeToHost } from '../../shared/protocol';
+import { useCallback, useEffect, useRef } from 'react';
+import { IframeToHost } from '../../shared/protocol';
 import type { HostToIframeMsg, IframeToHostMsg } from '../../shared/protocol';
 
 export function useGameFrame(
@@ -20,7 +20,9 @@ export function useGameFrame(
     return () => window.removeEventListener('message', h);
   }, [iframe]);
 
-  const send = (msg: HostToIframeMsg) =>
-    iframe.current?.contentWindow?.postMessage(msg, '*');
+  const send = useCallback(
+    (msg: HostToIframeMsg) => iframe.current?.contentWindow?.postMessage(msg, '*'),
+    [iframe],
+  );
   return { send };
 }

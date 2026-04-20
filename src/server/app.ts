@@ -6,7 +6,6 @@ import * as schema from './db/schema';
 import { CredentialVault } from './vault/vault';
 import { credentialsRouter } from './routes/credentials';
 import { submissionsRouter } from './routes/submissions';
-import { gamesRouter } from './routes/games';
 import { SubmissionQueue } from './submissions/queue';
 import { SessionManager } from './session/manager';
 import {
@@ -15,7 +14,6 @@ import {
   type SubmissionHook,
 } from './hooks/submissionHook';
 import type { WorkerMode } from './config';
-import type { GameRegistry } from './games/registry';
 
 export interface BuildAppOptions {
   vaultKey: Buffer;
@@ -26,8 +24,6 @@ export interface BuildAppOptions {
   workerMode?: WorkerMode;
   runSubmission?: (id: string) => Promise<unknown>;
   now?: () => Date;
-  registry?: GameRegistry;
-  gamesDir?: string;
 }
 
 export interface BuiltApp {
@@ -37,7 +33,6 @@ export interface BuiltApp {
   queue: SubmissionQueue;
   mgr: SessionManager;
   submissionHook: SubmissionHook;
-  registry: GameRegistry | null;
 }
 
 export function buildApp(opts: BuildAppOptions): BuiltApp {
@@ -75,11 +70,5 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   const submissionHook = createSubmissionHook(hookDeps);
   registerSubmissionHook(hookDeps);
 
-  // /api/games 라우트
-  if (opts.registry && opts.gamesDir) {
-    app.use('/api/games', gamesRouter(opts.registry, opts.gamesDir));
-    app.use('/games', express.static(opts.gamesDir));
-  }
-
-  return { app, db, vault, queue, mgr, submissionHook, registry: opts.registry ?? null };
+  return { app, db, vault, queue, mgr, submissionHook };
 }

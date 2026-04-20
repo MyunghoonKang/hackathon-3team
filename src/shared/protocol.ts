@@ -191,21 +191,6 @@ export interface WorkerResult {
 }
 
 // ---------------------------------------------------------------------------
-// Zod schemas for runtime validation (GameRegistry parsing)
-// ---------------------------------------------------------------------------
-export const GameMetaSchema = z.object({
-  id: z.string().min(1),
-  filename: z.string().endsWith('.html'),
-  title: z.string().min(1),
-  minPlayers: z.number().int().min(2),
-  maxPlayers: z.number().int().min(2),
-  description: z.string().default(''),
-  compare: z.enum(['max', 'min']),
-}).refine(d => d.maxPlayers >= d.minPlayers, {
-  message: 'maxPlayers must be >= minPlayers',
-});
-
-// ---------------------------------------------------------------------------
 // Socket event constants
 // ---------------------------------------------------------------------------
 
@@ -219,3 +204,33 @@ export interface ViewProps {
   snap: RoomStatePayload;
   me: string; // 내 playerId
 }
+
+// ---------------------------------------------------------------------------
+// iframe postMessage 계약 (host ↔ iframe)
+// ---------------------------------------------------------------------------
+
+export const IframeInit = z.object({
+  type: z.literal('init'),
+  playerId: z.string(),
+  players: z.array(z.object({ id: z.string(), name: z.string(), isHost: z.boolean(), connected: z.boolean() })),
+  sessionId: z.string(),
+  seed: z.string(),
+});
+export const IframeStart = z.object({ type: z.literal('start') });
+export const IframeOutcome = z.object({
+  type: z.literal('outcome'),
+  loserId: z.string(),
+  results: z.array(z.object({ playerId: z.string(), value: z.number() })),
+});
+
+export const IframeReady = z.object({ type: z.literal('ready') });
+export const IframeSubmit = z.object({
+  type: z.literal('submit'),
+  value: z.number().finite(),
+});
+
+export const HostToIframe = z.discriminatedUnion('type', [IframeInit, IframeStart, IframeOutcome]);
+export const IframeToHost = z.discriminatedUnion('type', [IframeReady, IframeSubmit]);
+
+export type HostToIframeMsg = z.infer<typeof HostToIframe>;
+export type IframeToHostMsg = z.infer<typeof IframeToHost>;
