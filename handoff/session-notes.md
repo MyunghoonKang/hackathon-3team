@@ -198,3 +198,7 @@
   - 버그 픽스: `run-now` 엔드포인트가 SessionManager만 RUNNING 전이하고 submissions DB row는 QUEUED 그대로 남겨 `queue.complete()`/`queue.fail()`이 no-op이 되는 문제 → `SubmissionQueue.claimById(id)` 신설 + run-now 엔드포인트에서 호출.
   - 전체 312/313 pass (실패 1은 4B worker-formfill Playwright 타임아웃 — 기존 상태 · 본 태스크 무관).
   - 남은 작업: B14 실 ERP 라이브 리허설 (사용자 본인 동석 필요).
+
+[3B] 2026-04-20 — Task A15 완료 — ResultView FINISHED 드럼롤(AudioContext) + loser-reveal CSS 애니메이션. LobbyView 복사버튼·socket.ts 실연결은 이미 완성 상태였음.
+
+[3B] 2026-04-20 — Task A15 재연결 토스트 완료 — App.tsx 에 socket disconnect/reconnect 배너. 3B DoD 전체 완료.
