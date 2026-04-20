@@ -58,31 +58,37 @@ export function ResultView({ snap, me }: ViewProps) {
   const iAmLoser = snap.loserId === me;
 
   if (snap.status === 'FINISHED') {
+    const loser = snap.players.find(p => p.id === snap.loserId);
     return (
       <section style={container} aria-label="결과">
         <Header snap={snap} />
         {snap.loserId ? (
-          <p style={{ margin: 0 }}>
-            <strong>패자</strong>:{' '}
-            <code>{snap.loserId}</code>
-            {iAmLoser && (
-              <span
-                style={{
-                  marginLeft: 'var(--space-2)',
-                  color: 'var(--color-status-failed)',
-                  fontWeight: 700,
-                }}
-              >
-                (나)
-              </span>
-            )}
-            {' — 아래에서 자격증명을 입력해주세요.'}
-          </p>
+          <div style={{ fontSize: 40, textAlign: 'center', margin: 'var(--space-6) 0' }}>
+            💀 <strong>{loser?.name ?? snap.loserId ?? '???'}</strong>
+          </div>
         ) : (
           <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>패자 확정 대기 중…</p>
         )}
+        {snap.results && snap.results.length > 0 && (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 'var(--space-2)' }}>
+            {snap.results.map(r => {
+              const player = snap.players.find(p => p.id === r.playerId);
+              return (
+                <li key={r.playerId} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{player?.name ?? r.playerId}</span>
+                  <strong>{r.value}점</strong>
+                </li>
+              );
+            })}
+          </ul>
+        )}
         {iAmLoser && snap.loserId && (
           <CredentialForm sessionId={snap.sessionId} loserId={snap.loserId} />
+        )}
+        {!iAmLoser && (
+          <p style={{ margin: 0, color: 'var(--color-text-muted)', textAlign: 'center' }}>
+            패자가 자격증명을 입력할 때까지 기다려주세요…
+          </p>
         )}
       </section>
     );
@@ -114,6 +120,28 @@ export function ResultView({ snap, me }: ViewProps) {
         <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
           다음 영업일 09:00 KST 에 자동 실행됩니다. 창을 닫아도 진행 상황은 유지됩니다.
         </p>
+        {iAmLoser && snap.submissionId && (
+          <button
+            onClick={() =>
+              fetch(`/api/submissions/${snap.submissionId}/run-now`, {
+                method: 'POST',
+                headers: { 'X-Demo-Confirm': 'yes' },
+              })
+            }
+            style={{
+              padding: 'var(--space-2) var(--space-4)',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              background: 'var(--color-primary)',
+              color: 'var(--color-primary-ink)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+            }}
+          >
+            지금 상신 실행 (데모)
+          </button>
+        )}
       </section>
     );
   }
